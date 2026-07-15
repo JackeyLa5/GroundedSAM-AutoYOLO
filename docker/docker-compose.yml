@@ -29,6 +29,7 @@ services:
     ports:
       - "8000:8000"
       - "8002:8002"
+    shm_size: "8gb"
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/autolabeling
       PYTHONPATH: /app
