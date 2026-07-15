@@ -35,7 +35,7 @@ def wait_for_server():
         time.sleep(5)
 
 def run_benchmark(use_sam2=False):
-    mode = "VLM + SAM2" if use_sam2 else "VLM only"
+    mode = "Grounded-SAM (with seg)" if use_sam2 else "Grounded-SAM (bbox only)"
     print(f"\n--- Starting Benchmark: {mode} ---")
     
     # Get all jpg images

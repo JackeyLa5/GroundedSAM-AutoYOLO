@@ -1,7 +1,7 @@
 # 项目结构
 
 ```
-VLM-AutoYOLO/
+AutoYOLO/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
@@ -15,7 +15,7 @@ VLM-AutoYOLO/
 │   │   ├── core/
 │   │   │   ├── config.py            # 配置、设备检测、分配器调优
 │   │   │   ├── database.py          # SQLAlchemy 引擎 + 会话
-│   │   │   ├── gpu_memory.py        # GPU 内存策略（CUDA / MPS / CPU）
+│   │   │   ├── gpu_memory.py        # GPU 内存策略（CUDA 为主）
 │   │   │   ├── exceptions.py        # 自定义异常
 │   │   │   └── middleware.py        # 请求 ID、CORS、日志
 │   │   ├── models/                  # SQLAlchemy ORM
@@ -29,11 +29,9 @@ VLM-AutoYOLO/
 │   │   │   ├── detection.py         # DetectionOut、DetectionBoxOut、ExportBatchIn
 │   │   │   └── train.py             # TrainingJobOut、TrainRequest
 │   │   ├── services/
-│   │   │   ├── detection_strategy.py # 策略模式（VLM / VLM+SAM2 / SAM3）
+│   │   │   ├── detection_strategy.py # Grounded-SAM 检测编排
 │   │   │   ├── box_filter.py        # 标注框过滤、NMS 去重
-│   │   │   ├── locate_anything.py   # VLM 推理引擎
-│   │   │   ├── sam2_service.py      # SAM2 分割服务
-│   │   │   ├── sam3_client.py       # SAM3 HTTP 客户端 + 闲置看门狗
+│   │   │   ├── grounded_sam_client.py # Grounded-SAM HTTP 客户端 + 闲置看门狗
 │   │   │   ├── trainer.py           # YOLO 训练 + 验证
 │   │   │   ├── export.py            # 多格式导出分发器
 │   │   │   ├── yolo_format.py       # YOLO 标签转换（bbox + seg）
@@ -46,8 +44,8 @@ VLM-AutoYOLO/
 │   ├── alembic/                     # 数据库迁移
 │   │   ├── env.py
 │   │   └── versions/
-│   ├── sam3_server.py              # SAM3 独立 WSGI 服务（端口 8002）
-│   ├── sam3-venv/                   # SAM3 专用虚拟环境
+│   ├── grounded_sam2_server.py      # Grounded-SAM 独立 WSGI 服务（端口 8002）
+│   ├── grounded-sam2-venv/          # Grounded-SAM 专用虚拟环境
 │   ├── tests/
 │   │   ├── test_api_integration.py  # API 集成测试
 │   │   ├── test_regression.py       # 回归快照测试
@@ -64,8 +62,7 @@ VLM-AutoYOLO/
 │       │   ├── HistoryList.tsx      # 检测历史（分页 + 导出下拉菜单）
 │       │   ├── HistoryListItem.tsx  # 历史记录单项卡片
 │       │   ├── ResultTable.tsx      # 结果表格（含 Mask 列）
-│       │   ├── ModelStatus.tsx      # VLM + SAM2 模型状态显示
-│       │   ├── Sam3Status.tsx       # SAM3 模型状态显示
+│       │   ├── ModelStatus.tsx      # Grounded-SAM 服务状态显示
 │       │   ├── training/            # YOLO 训练子组件
 │       │   │   ├── TrainingCandidateList.tsx
 │       │   │   ├── CandidateListItem.tsx
@@ -73,7 +70,7 @@ VLM-AutoYOLO/
 │       │   │   ├── TrainingPreview.tsx
 │       │   │   ├── HoverPreview.tsx # hover 按需请求检测详情
 │       │   │   └── StatusBadge.tsx
-│       │   ├── Sidebar.tsx          # 主侧边栏（模型选择器、SAM2/SAM3 开关）
+│       │   ├── Sidebar.tsx          # 主侧边栏和 Grounded-SAM 控制项
 │       │   ├── VideoPanel.tsx       # 视频上传与关键帧时间轴
 │       │   ├── VideoValidator.tsx   # 视频验证
 │       │   ├── ModelSelector.tsx    # YOLO 模型选择器
@@ -100,8 +97,11 @@ VLM-AutoYOLO/
 │   ├── BENCHMARKS.md / BENCHMARKS_ZH.md # 性能基准
 │   ├── guide/                       # 中文用户指南
 │   └── guide/en/                    # 英文用户指南
-├── docker-compose.yml
+├── docker/
+│   ├── docker-compose.yml           # Ubuntu x86 CUDA Docker 编排
+│   ├── backend.Dockerfile           # 后端 + Grounded-SAM2 镜像
+│   ├── frontend.Dockerfile          # 前端 Nginx 镜像
+│   └── nginx.conf                   # 前端反向代理配置
 ├── commitlint.config.js            # Conventional Commits 规范
-├── start.sh / start.bat
 └── README.md
 ```

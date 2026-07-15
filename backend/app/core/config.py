@@ -25,12 +25,12 @@ class Settings(BaseSettings):
         db_path = self.project_root / "autolabeling.db"
         return f"sqlite:///{db_path}"
 
-    # Model (auto-detect: cuda → mps; CPU is not supported)
-    model_dir: str = ""
+    # Grounded-SAM model settings
     device: str = ""
-    model_id: str = "nvidia/LocateAnything-3B"
-    sam2_model_id: str = "facebook/sam2.1-hiera-base-plus"
-    sam2_checkpoint_path: str = ""
+    grounded_sam2_grounding_model_id: str = "IDEA-Research/grounding-dino-tiny"
+    grounded_sam2_sam2_model_id: str = "facebook/sam2.1-hiera-base-plus"
+    grounded_sam2_sam2_checkpoint_path: str = ""
+    grounded_sam2_port: int = 8002
 
     @property
     def resolved_device(self) -> str:
@@ -40,6 +40,8 @@ class Settings(BaseSettings):
 
     # Model idle timeout (seconds) — auto-unload to free GPU memory
     model_idle_timeout_seconds: int = 600
+    grounded_sam2_load_timeout_seconds: int = 600
+    log_dir: str = "logs"
 
     # Server
     host: str = "0.0.0.0"
@@ -63,10 +65,6 @@ class Settings(BaseSettings):
         d = self.project_root / "uploads"
         d.mkdir(parents=True, exist_ok=True)
         return d
-
-    @property
-    def resolved_model_dir(self) -> str:
-        return self.model_dir or str(self.project_root / "model")
 
 
 settings = Settings()

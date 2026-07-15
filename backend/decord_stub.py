@@ -1,6 +1,6 @@
 """Minimal decord stub so transformers doesn't fail on ``import decord``.
 
-decord is a Linux-only video reader that is not needed by LocateAnything-3B
+decord is a Linux-only video reader that is not needed by Grounded-SAM
 (image-based model), but the transformers processor still attempts to import it.
 """
 

@@ -1,14 +1,41 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/store/useAppStore";
 import { addBox, deleteBox, saveFilterSettings } from "@/services/api";
 import { applyFilter } from "@/lib/filterBoxes";
-import type { BBox } from "@/types";
+import type { Detection } from "@/types";
+
+type DetectionListPage = { items: Detection[]; total: number };
+type DetectionListData = InfiniteData<DetectionListPage, number>;
 
 export function useDetectionAnnotation() {
   const { t } = useTranslation();
-  const { drawCategory, filterMode, nmsIou, setHiddenIndices, result, setResult, setBatchResults } = useAppStore();
+  const queryClient = useQueryClient();
+  const { drawCategory, filterMode, nmsIou, boxCategoryFilter, setHiddenIndices, result } =
+    useAppStore();
+  const [maskingBox, setMaskingBox] = useState(false);
+
+  const syncDetection = useCallback(
+    (updated: Detection) => {
+      useAppStore.setState((state) => ({
+        result: state.result?.id === updated.id ? updated : state.result,
+        batchResults: state.batchResults.map((r) => (r.id === updated.id ? updated : r)),
+      }));
+      queryClient.setQueryData<DetectionListData>(["detections"], (data) => {
+        if (!data) return data;
+        return {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((det) => (det.id === updated.id ? updated : det)),
+          })),
+        };
+      });
+    },
+    [queryClient],
+  );
 
   const handleDrawBox = useCallback(
     async (raw: { x1: number; y1: number; x2: number; y2: number }) => {
@@ -17,40 +44,41 @@ export function useDetectionAnnotation() {
         return;
       }
       try {
-        await addBox(result.id, { ...raw, className: drawCategory.trim() });
-        const newBox: BBox = {
-          id: `manual-${Date.now()}`,
-          className: drawCategory.trim(),
-          ...raw,
-          confidence: null,
-        };
-        const updated = { ...result, boxes: [...result.boxes, newBox] };
-        setResult(updated);
-        setBatchResults((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+        setMaskingBox(true);
+        const newBox = await addBox(result.id, { ...raw, className: drawCategory.trim() });
+        const latest = useAppStore.getState().result;
+        if (!latest || latest.id !== result.id) return;
+        const exists = latest.boxes.some((box) => box.id === newBox.id);
+        const updated = { ...latest, boxes: exists ? latest.boxes : [...latest.boxes, newBox] };
+        syncDetection(updated);
       } catch (e) {
         console.error("Draw box failed:", e);
         toast.error(t("home.drawBoxFailed") || "Failed to save box");
+      } finally {
+        setMaskingBox(false);
       }
     },
-    [result, drawCategory, setBatchResults, setResult, t],
+    [result, drawCategory, syncDetection, t],
   );
 
   const handleDeleteBox = useCallback(
     async (boxId: string) => {
-      if (!result) return;
-      const box = result.boxes.find((b) => b.id === boxId);
+      const latest = useAppStore.getState().result;
+      if (!latest) return;
+      const box = latest.boxes.find((b) => b.id === boxId);
       if (!box) return;
       try {
-        await deleteBox(result.id, box.id);
-        const updated = { ...result, boxes: result.boxes.filter((b) => b.id !== boxId) };
-        setResult(updated);
-        setBatchResults((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+        await deleteBox(latest.id, box.id);
+        const current = useAppStore.getState().result;
+        if (!current || current.id !== latest.id) return;
+        const updated = { ...current, boxes: current.boxes.filter((b) => b.id !== boxId) };
+        syncDetection(updated);
       } catch (e) {
         console.error("Delete box failed:", e);
         toast.error(t("home.deleteBoxFailed") || "Failed to delete box");
       }
     },
-    [result, setBatchResults, setResult, t],
+    [syncDetection, t],
   );
 
   const handleSaveBoxes = useCallback(async () => {
@@ -59,7 +87,7 @@ export function useDetectionAnnotation() {
     try {
       await saveFilterSettings(result.id, filterMode, filterMode === "nms" ? nmsIou : null);
       toast.success(t("home.savedSuccessfully"));
-      setResult({
+      syncDetection({
         ...result,
         filterMode: filterMode,
         filterNmsIou: filterMode === "nms" ? nmsIou : null,
@@ -68,7 +96,7 @@ export function useDetectionAnnotation() {
       console.error("Save boxes failed:", e);
       toast.error(t("home.saveFailed"));
     }
-  }, [result, filterMode, nmsIou, setResult, t]);
+  }, [result, filterMode, nmsIou, syncDetection, t]);
 
   const toggleBoxVisibility = useCallback(
     (id: string) => {
@@ -83,8 +111,16 @@ export function useDetectionAnnotation() {
   );
 
   const displayResult = useMemo(
-    () => (result ? { ...result, boxes: applyFilter(filterMode, result.boxes, nmsIou) } : null),
-    [result, filterMode, nmsIou],
+    () => {
+      if (!result) return null;
+      const categorySet = new Set(boxCategoryFilter);
+      const categoryBoxes =
+        categorySet.size > 0
+          ? result.boxes.filter((box) => categorySet.has(box.className))
+          : result.boxes;
+      return { ...result, boxes: applyFilter(filterMode, categoryBoxes, nmsIou) };
+    },
+    [result, filterMode, nmsIou, boxCategoryFilter],
   );
 
   return {
@@ -93,5 +129,6 @@ export function useDetectionAnnotation() {
     handleSaveBoxes,
     toggleBoxVisibility,
     displayResult,
+    maskingBox,
   };
 }

@@ -1,6 +1,6 @@
 {
   "common": {
-    "annotate": "标注预训练",
+    "annotate": "自动标注",
     "validate": "YOLO 验证",
     "image": "图片",
     "video": "视频",
@@ -41,14 +41,15 @@
     "placeholderVideoRunning": "视频推理中，调整上方 Conf/IoU 后重新点击「验证视频」",
     "placeholderDefault": "上传图片/视频并输入目标类别，点击“开始检测”",
     "yoloValidation": "YOLO 验证",
-    "useSam2": "启用 SAM2 分割（生成精确 mask）",
-    "useSam3Seg": "启用 SAM3 分割（生成精确 mask）"
+    "useGroundedSamSeg": "启用 Grounded-SAM 分割（生成精确 mask）"
   },
   "filter": {
     "filterMode": "过滤模式",
     "best": "最优",
     "nms": "去重",
     "all": "全部",
+    "categoryFilter": "类别筛选",
+    "clearCategoryFilter": "清除",
     "nmsIou": "IoU",
     "fewerBoxes": "更少框",
     "moreBoxes": "更多框"
@@ -154,6 +155,12 @@
     "deleteConfirm": "确定删除此记录吗？",
     "deleteSuccess": "已删除记录",
     "deleteFailed": "删除失败",
+    "batchDelete": "删除已选 {{count}} 条",
+    "batchDeleteConfirm": "确定删除已选的 {{count}} 条记录吗？",
+    "batchDeleteSuccess": "已删除 {{count}} 条记录",
+    "selectVisible": "选择当前列表",
+    "showSelected": "展示已选 {{count}} 条",
+    "clearSelection": "清空选择",
     "selectedTags": "已选 {{count}} 个标签",
     "filterByTag": "按标签筛选",
     "noMatch": "无匹配",
@@ -170,10 +177,13 @@
     "timeElapsed": "耗时",
     "saveFilter": "保存过滤结果",
     "redetect": "重新检测",
+    "redetectCurrent": "重新检测当前",
+    "redetectAll": "重新检测全部",
     "exportLabel": "导出标注",
     "exportAllDataset": "导出全部数据集 ({{count}})",
     "exportDataset": "导出数据集",
     "loadingModel": "模型加载中...",
+    "samMasking": "SAM 分割中...",
     "detecting": "检测进行中...",
     "pleaseWait": "请稍候"
   },
@@ -184,7 +194,10 @@
     "showBox": "显示标注框",
     "hideBox": "隐藏标注框",
     "deleteBox": "删除此检测框",
-    "deleteBoxConfirm": "确定删除此检测框吗？"
+    "deleteBoxConfirm": "确定删除此检测框吗？",
+    "selectedBoxes": "已选 {{count}} 个框",
+    "deleteSelectedBoxes": "删除已选 {{count}} 个",
+    "deleteSelectedBoxesConfirm": "确定删除已选的 {{count}} 个检测框吗？"
   },
   "trainingPanel": {
     "variant": "模型变体",
@@ -213,6 +226,14 @@
     "addToQueue": "加入训练队列 ({{count}} 条)",
     "trainingInProgress": "训练进行中，检测功能暂不可用",
     "selectRecordRequired": "请至少选择一条检测记录",
+    "noPositiveTargets": "所选记录中没有可用于训练/导出的目标，请重新检测这些图片",
+    "zeroTargetWarningTitle": "存在零目标图片",
+    "zeroTargetWarningMessage": "所选记录中有 {{count}} 张图片没有检测到目标。{{action}} 时这些图片永远不会被包含。你可以取消后继续检测/补标，或忽略这些图片并继续。",
+    "zeroTargetAction": {
+      "train": "训练",
+      "export": "导出"
+    },
+    "ignoreAndContinue": "忽略并继续",
     "selectedCountTotal": "已选 {{current}}{{filtered}} / {{total}} 条",
     "selectAll": "全选",
     "deselectAll": "取消全选",
@@ -297,24 +318,16 @@
     "cancel": "取消批处理"
   },
   "modelStatus": {
-    "loaded": "VLM 模型已加载",
-    "unloaded": "VLM 模型未加载",
     "download": "下载模型",
     "downloading": "正在下载模型...",
     "loading": "加载到 GPU...",
     "error": "模型错误",
     "unload": "卸载",
     "unloading": "卸载中...",
-    "unloadSuccess": "VLM 模型已卸载",
-    "unloadFailed": "卸载失败",
-    "sam2Loaded": "SAM2 模型已加载",
-    "sam2Unloaded": "SAM2 模型未加载",
-    "sam3Loaded": "SAM3 模型已加载",
-    "sam3Unloaded": "SAM3 模型未加载",
-    "sam2UnloadSuccess": "SAM2 模型已卸载",
-    "sam2UnloadFailed": "SAM2 卸载失败",
-    "sam3UnloadSuccess": "SAM3 模型已卸载",
-    "sam3UnloadFailed": "SAM3 卸载失败",
+    "groundedSamLoaded": "Grounded-SAM 模型已加载",
+    "groundedSamUnloaded": "Grounded-SAM 模型未加载",
+    "groundedSamUnloadSuccess": "Grounded-SAM 模型已卸载",
+    "groundedSamUnloadFailed": "Grounded-SAM 卸载失败",
     "preparing": "准备中...",
     "stageStarting": "启动中...",
     "stageTokenizer": "下载分词器...",

@@ -79,19 +79,9 @@ export const CandidateListItem = memo(
           <span className="truncate flex-1">{det.imageName}</span>
           {det.modelType && (
             <span
-              className={`rounded px-1 py-0.5 text-[10px] font-medium flex-shrink-0 ${
-                det.modelType === "sam3"
-                  ? "bg-violet-100 text-violet-700"
-                  : det.modelType === "vlm+sam2"
-                    ? "bg-amber-100 text-amber-700"
-                    : "bg-blue-100 text-blue-700"
-              }`}
+              className="rounded px-1 py-0.5 text-[10px] font-medium flex-shrink-0 bg-violet-100 text-violet-700"
             >
-              {det.modelType === "sam3"
-                ? "SAM3"
-                : det.modelType === "vlm+sam2"
-                  ? "VLM+SAM2"
-                  : "VLM"}
+              Grounded-SAM
             </span>
           )}
           <span className="text-gray-400 flex-shrink-0">

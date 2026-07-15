@@ -1,6 +1,6 @@
 {
   "imageName": "pexels-baakya-29022084.jpg",
-  "modelType": "vlm",
+  "modelType": "grounded-sam",
   "imageWidth": 6631,
   "imageHeight": 4672,
   "boxCount": 1,

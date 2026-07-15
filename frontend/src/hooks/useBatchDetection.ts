@@ -1,3 +1,5 @@
+import { batchFileDetectionMap, getFileIdentity } from "@/lib/cache";
+
 export function useBatchDetection() {
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const batchRef = useRef(false);
@@ -6,13 +8,10 @@ export function useBatchDetection() {
     async (
       files: File[],
       categories: string[],
-      useSam2: boolean,
-      sam2ScoreThreshold: number,
-      useSam3: boolean,
-      sam3Text: string,
-      useSam3Seg: boolean,
-      sam3Threshold: number,
-      sam3MaskThreshold: number,
+      groundedSamText: string,
+      useGroundedSamSeg: boolean,
+      groundedSamThreshold: number,
+      groundedSamMaskThreshold: number,
       onEach: (result: Detection, file: File, index: number, elapsed: number) => void,
       signal?: AbortSignal,
     ) => {
@@ -25,18 +24,19 @@ export function useBatchDetection() {
       try {
         for (let i = 0; i < files.length; i++) {
           if (!batchRef.current || signal?.aborted) break;
+          const fileIdentity = getFileIdentity(files[i]);
+          const replaceDetectionId = batchFileDetectionMap.get(fileIdentity);
           const data = await detectImage(
             files[i],
             categories,
-            useSam2,
-            sam2ScoreThreshold,
-            useSam3,
-            sam3Text,
-            useSam3Seg,
-            sam3Threshold,
-            sam3MaskThreshold,
+            groundedSamText,
+            useGroundedSamSeg,
+            groundedSamThreshold,
+            groundedSamMaskThreshold,
+            replaceDetectionId,
             signal,
           );
+          batchFileDetectionMap.set(fileIdentity, data.id);
           results.push(data);
           if (i === files.length - 1) {
             setBatchProgress({ current: 0, total: 0 });

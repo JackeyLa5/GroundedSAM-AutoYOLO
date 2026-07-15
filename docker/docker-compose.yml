@@ -16,10 +16,16 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/somnusochi/vlm-autoyolo-backend:latest
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      args:
+        PYTORCH_IMAGE: ${PYTORCH_IMAGE:-pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel}
+        TORCH_ARCH: ${TORCH_ARCH:-8.9}
+        GROUNDING_MODEL_ID: ${GROUNDING_MODEL_ID:-IDEA-Research/grounding-dino-tiny}
+        SAM2_MODEL_ID: ${SAM2_MODEL_ID:-facebook/sam2.1-hiera-base-plus}
+        PRELOAD_MODELS: ${PRELOAD_MODELS:-1}
+    image: autoyolo-backend:ubuntu-x86-cuda
     ports:
       - "8000:8000"
       - "8002:8002"
@@ -28,11 +34,21 @@ services:
       PYTHONPATH: /app
       HF_HOME: /home/appuser/.cache/huggingface
       HF_TOKEN: ${HF_TOKEN:-}
+      DEVICE: cuda
+      LOG_DIR: /app/logs
+      WATCHFILES_FORCE_POLLING: "true"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
+      - ../backend/app:/app/app
+      - ../backend/grounded_sam2_server.py:/app/grounded_sam2_server.py
+      - ../backend/alembic.ini:/app/alembic.ini
+      - ../backend/alembic:/app/alembic
+      - ../logs:/app/logs
       - model-cache:/app/model
-      - sam3-cache:/home/appuser/.cache/huggingface
       - uploads:/app/uploads
       - training-data:/app/training_runs
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     depends_on:
       db:
         condition: service_healthy
@@ -46,12 +62,14 @@ services:
               capabilities: [gpu]
 
   frontend:
-    image: ghcr.io/somnusochi/vlm-autoyolo-frontend:latest
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+    image: autoyolo-frontend:ubuntu-x86
     ports:
       - "80:80"
+    volumes:
+      - ../frontend/dist:/usr/share/nginx/html:ro
     depends_on:
       - backend
     restart: unless-stopped
@@ -59,6 +77,5 @@ services:
 volumes:
   pgdata:
   model-cache:
-  sam3-cache:
   uploads:
   training-data:

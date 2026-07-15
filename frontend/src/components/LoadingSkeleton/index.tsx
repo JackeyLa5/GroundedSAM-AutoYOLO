@@ -1,14 +1,10 @@
 export function DetectionSkeleton() {
   const { t } = useTranslation();
-  const { vlm, sam2, sam3 } = useModelEvents();
+  const { groundedSam } = useModelEvents();
 
   const modelLoading =
-    vlm.state === "loading" ||
-    vlm.state === "downloading" ||
-    sam2.state === "loading" ||
-    sam2.state === "downloading" ||
-    sam3.status === "loading" ||
-    sam3.status === "starting";
+    groundedSam.status === "loading" ||
+    groundedSam.status === "starting";
 
   return (
     <div className="flex flex-col items-center justify-center h-64 space-y-4">

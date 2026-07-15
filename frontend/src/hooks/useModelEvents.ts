@@ -1,32 +1,14 @@
-interface VlmState {
-  state: string;
-  stage: string;
-  progress: number;
-  error: string;
-}
-
-interface Sam2State {
-  state: string;
-  stage: string;
-  progress: number;
-  error: string;
-}
-
-interface Sam3State {
+interface GroundedSamState {
   loaded: boolean;
   status: string;
 }
 
 interface ModelStates {
-  vlm: VlmState;
-  sam2: Sam2State;
-  sam3: Sam3State;
+  groundedSam: GroundedSamState;
 }
 
 const defaults: ModelStates = {
-  vlm: { state: "unloaded", stage: "", progress: 0, error: "" },
-  sam2: { state: "unloaded", stage: "", progress: 0, error: "" },
-  sam3: { loaded: false, status: "unloaded" },
+  groundedSam: { loaded: false, status: "unloaded" },
 };
 
 let cached: ModelStates = { ...defaults };
@@ -74,26 +56,15 @@ function subscribe(fn: (s: ModelStates) => void) {
 
 /** Immediately mark a model as loading — SSE will correct it on next poll.
     Skips if the model is already loaded to avoid flickering. */
-export function optimisticModelLoading(model: "vlm" | "sam2" | "sam3") {
-  const alreadyLoaded =
-    model === "vlm" ? cached.vlm.state === "loaded"
-    : model === "sam2" ? cached.sam2.state === "loaded"
-    : cached.sam3.status === "loaded";
-  if (alreadyLoaded) return;
-
-  if (model === "vlm") cached = { ...cached, vlm: { ...cached.vlm, state: "loading" } };
-  else if (model === "sam2") cached = { ...cached, sam2: { ...cached.sam2, state: "loading" } };
-  else cached = { ...cached, sam3: { ...cached.sam3, status: "loading" } };
+export function optimisticModelLoading() {
+  if (cached.groundedSam.status === "loaded") return;
+  cached = { ...cached, groundedSam: { ...cached.groundedSam, status: "loading" } };
   subscribers.forEach((fn) => fn(cached));
 }
 
 /** Immediately mark a model as unloaded — SSE will correct it on next poll. */
-export function optimisticModelUnloaded(model: "vlm" | "sam2" | "sam3") {
-  if (model === "vlm")
-    cached = { ...cached, vlm: { state: "unloaded", stage: "", progress: 0, error: "" } };
-  else if (model === "sam2")
-    cached = { ...cached, sam2: { state: "unloaded", stage: "", progress: 0, error: "" } };
-  else cached = { ...cached, sam3: { loaded: false, status: "unloaded" } };
+export function optimisticModelUnloaded() {
+  cached = { ...cached, groundedSam: { loaded: false, status: "unloaded" } };
   subscribers.forEach((fn) => fn(cached));
 }
 

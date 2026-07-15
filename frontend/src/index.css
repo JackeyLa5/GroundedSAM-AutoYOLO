@@ -20,7 +20,7 @@
   --color-border: #e5e7eb;
 }
 
-/* Dark theme (NVIDIA LocateAnything style) */
+/* Dark theme */
 :root.dark {
   --color-bg-primary: #050505;
   --color-bg-secondary: #0f0f0f;

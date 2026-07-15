@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import enum
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -10,19 +10,17 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from ..core.database import Base
 
 
-class ModelType(enum.StrEnum):
-    vlm = "vlm"
-    vlm_sam2 = "vlm+sam2"
-    sam3 = "sam3"
+class ModelType(str, enum.Enum):
+    grounded_sam = "grounded-sam"
 
 
-class FilterMode(enum.StrEnum):
+class FilterMode(str, enum.Enum):
     best = "best"
     nms = "nms"
     all = "all"
 
 
-class DetectionStatus(enum.StrEnum):
+class DetectionStatus(str, enum.Enum):
     completed = "completed"
     failed = "failed"
 
@@ -38,7 +36,7 @@ class Detection(Base):
     image_path: Mapped[str] = mapped_column(Text, nullable=False)
     image_name: Mapped[str] = mapped_column(String(512), nullable=False)
     categories: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    model_name: Mapped[str] = mapped_column(String(256), default="LocateAnything-3B")
+    model_name: Mapped[str] = mapped_column(String(256), default="Grounded-SAM")
     model_type: Mapped[ModelType | None] = mapped_column(
         Enum(ModelType, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
@@ -53,7 +51,7 @@ class Detection(Base):
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(timezone.utc),
     )
 
     boxes: Mapped[list[DetectionBox]] = relationship(
@@ -90,7 +88,7 @@ class DetectionBox(Base):
     mask_polygon: Mapped[list | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(timezone.utc),
     )
 
     detection: Mapped[Detection] = relationship("Detection", back_populates="boxes")

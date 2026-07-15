@@ -10,6 +10,8 @@ import { useYoloValidation } from "./useYoloValidation";
 import { useDetectMutation } from "./useDetection";
 import { optimisticModelLoading } from "./useModelEvents";
 import { API_BASE, tokenCache, uploadCache } from "@/lib/constants";
+import { parseCategories } from "@/lib/parsers";
+import type { FilterMode } from "@/lib/filterBoxes";
 import type { Detection } from "@/types";
 
 export function useDetectionProcess() {
@@ -20,20 +22,23 @@ export function useDetectionProcess() {
     validateModelSource,
     selectedTrainedJobId,
     externalModelFile,
-    useSam2,
-    sam2ScoreThreshold,
-    useSam3,
-    sam3Text,
-    useSam3Seg,
-    sam3Threshold,
-    sam3MaskThreshold,
+    groundedSamText,
+    useGroundedSamSeg,
+    groundedSamThreshold,
+    groundedSamMaskThreshold,
     files,
     setFiles,
+    setCategories,
+    setFilterMode,
+    setNmsIou,
+    setHiddenIndices,
     setPreviewUrl,
     categories,
     result,
+    batchResults,
     setResult,
     setBatchResults,
+    setBoxCategoryFilter,
   } = useAppStore();
 
   const timer = useDetectionTimer();
@@ -74,9 +79,10 @@ export function useDetectionProcess() {
       setFiles(fs);
       setBatchResults([]);
       setResult(null);
+      setBoxCategoryFilter([]);
       setPreviewUrl(fs.length === 1 ? getFileUrl(fs[0]) : null);
     },
-    [setBatchResults, setFiles, setPreviewUrl, setResult],
+    [setBatchResults, setBoxCategoryFilter, setFiles, setPreviewUrl, setResult],
   );
 
   const handleSelectKeyframe = useCallback(
@@ -85,28 +91,42 @@ export function useDetectionProcess() {
       setPreviewUrl(fs.length === 1 ? getFileUrl(fs[0]) : null);
       setBatchResults([]);
       setResult(null);
+      setBoxCategoryFilter([]);
     },
-    [setBatchResults, setFiles, setPreviewUrl, setResult],
+    [setBatchResults, setBoxCategoryFilter, setFiles, setPreviewUrl, setResult],
   );
 
   const handleBatchSelect = useCallback(
     (det: Detection, file?: File) => {
       setResult(det);
-      if (file) setPreviewUrl(getFileUrl(file));
+      setCategories(parseCategories(det.categories));
+      setFilterMode((det.filterMode as FilterMode) || "all");
+      if (det.filterNmsIou != null) setNmsIou(det.filterNmsIou);
+      setHiddenIndices(new Set());
+      setBoxCategoryFilter([]);
+      setPreviewUrl(file ? getFileUrl(file) : `${API_BASE}/detections/${det.id}/image`);
     },
-    [setPreviewUrl, setResult],
+    [
+      setBoxCategoryFilter,
+      setCategories,
+      setFilterMode,
+      setHiddenIndices,
+      setNmsIou,
+      setPreviewUrl,
+      setResult,
+    ],
   );
 
   const handleDetect = useCallback(async () => {
     if (files.length === 0) return;
-    if (useSam2) optimisticModelLoading("sam2");
-    if (!useSam2 && !useSam3) optimisticModelLoading("vlm");
+    optimisticModelLoading();
     timer.startTimer();
     batchFileMap.clear();
     const ctrl = newAbortController();
     // Clear old result, show first new image immediately
     setResult(null);
     setBatchResults([]);
+    setBoxCategoryFilter([]);
     setPreviewUrl(getFileUrl(files[0]));
 
     try {
@@ -178,13 +198,10 @@ export function useDetectionProcess() {
       await runBatch(
         files,
         categories,
-        useSam2,
-        sam2ScoreThreshold,
-        useSam3,
-        sam3Text,
-        useSam3Seg,
-        sam3Threshold,
-        sam3MaskThreshold,
+        groundedSamText,
+        useGroundedSamSeg,
+        groundedSamThreshold,
+        groundedSamMaskThreshold,
         (data, file, i) => {
           batchFileMap.set(data.id, file);
           setBatchResults((prev) => {
@@ -209,13 +226,10 @@ export function useDetectionProcess() {
     files,
     categories,
     appMode,
-    useSam2,
-    sam2ScoreThreshold,
-    useSam3,
-    sam3Text,
-    useSam3Seg,
-    sam3Threshold,
-    sam3MaskThreshold,
+    groundedSamText,
+    useGroundedSamSeg,
+    groundedSamThreshold,
+    groundedSamMaskThreshold,
     validateModelSource,
     externalModelFile,
     selectedTrainedJobId,
@@ -225,6 +239,7 @@ export function useDetectionProcess() {
     timer,
     queryClient,
     setBatchResults,
+    setBoxCategoryFilter,
     setBatchProgress,
     setPreviewUrl,
     setResult,
@@ -247,13 +262,11 @@ export function useDetectionProcess() {
       const data = await detectMut.mutateAsync({
         file,
         categories,
-        useSam2,
-        sam2ScoreThreshold,
-        useSam3,
-        sam3Text,
-        useSam3Seg,
-        sam3Threshold,
-        sam3MaskThreshold,
+        groundedSamText,
+        useGroundedSamSeg,
+        groundedSamThreshold,
+        groundedSamMaskThreshold,
+        replaceDetectionId: result.id,
         signal: ctrl.signal,
       });
       if (data) batchFileMap.set(data.id, file);
@@ -268,19 +281,87 @@ export function useDetectionProcess() {
   }, [
     result,
     categories,
-    useSam2,
-    sam2ScoreThreshold,
-    useSam3,
-    sam3Text,
-    useSam3Seg,
-    sam3Threshold,
-    sam3MaskThreshold,
+    groundedSamText,
+    useGroundedSamSeg,
+    groundedSamThreshold,
+    groundedSamMaskThreshold,
     newAbortController,
     detectMut,
     timer,
     setBatchResults,
     setResult,
     t,
+  ]);
+
+  const handleReDetectAll = useCallback(async () => {
+    if (batchResults.length <= 1) {
+      await handleReDetect();
+      return;
+    }
+    const ctrl = newAbortController();
+    timer.startTimer();
+    setBatchProgress({ current: 0, total: batchResults.length });
+    try {
+      let firstResult: Detection | null = null;
+      for (let i = 0; i < batchResults.length; i++) {
+        const det = batchResults[i];
+        let file: File;
+        const cached = batchFileMap.get(det.id);
+        if (cached) {
+          file = cached;
+        } else {
+          const blob = await fetch(`${API_BASE}/detections/${det.id}/image`, { signal: ctrl.signal }).then((r) => r.blob());
+          file = new File([blob], det.imageName, { type: blob.type });
+        }
+        const data = await detectMut.mutateAsync({
+          file,
+          categories,
+          groundedSamText,
+          useGroundedSamSeg,
+          groundedSamThreshold,
+          groundedSamMaskThreshold,
+          replaceDetectionId: det.id,
+          signal: ctrl.signal,
+        });
+        if (data) {
+          batchFileMap.set(data.id, file);
+          setBatchResults((prev) => prev.map((r) => (r.id === det.id ? data : r)));
+          if (!firstResult) firstResult = data;
+          if (result?.id === det.id) {
+            setResult(data);
+            firstResult = data;
+          }
+        }
+        setBatchProgress({ current: i + 1, total: batchResults.length });
+      }
+      if (!result && firstResult) {
+        setResult(firstResult);
+        setPreviewUrl(`${API_BASE}/detections/${firstResult.id}/image`);
+      }
+    } catch (e) {
+      console.error("Re-detect all failed:", e);
+      toast.error(t("home.redetectFailed") || "Re-detect failed");
+    } finally {
+      setBatchProgress({ current: 0, total: 0 });
+      timer.stopTimer();
+    }
+  }, [
+    batchResults,
+    categories,
+    detectMut,
+    groundedSamMaskThreshold,
+    groundedSamText,
+    groundedSamThreshold,
+    handleReDetect,
+    newAbortController,
+    result,
+    setBatchResults,
+    setBatchProgress,
+    setPreviewUrl,
+    setResult,
+    timer,
+    t,
+    useGroundedSamSeg,
   ]);
 
   const loading = detectMut.isPending || batchProgress.total > 0 || validating;
@@ -294,6 +375,7 @@ export function useDetectionProcess() {
     handleBatchSelect,
     handleDetect,
     handleReDetect,
+    handleReDetectAll,
     cancel,
     loading,
     isRedetecting: detectMut.isPending,

@@ -6,7 +6,9 @@ interface HistoryListItemProps {
   virtualRow: VirtualItem;
   measureElement: (node: Element | null) => void;
   selectedSet: Set<string>;
+  isSelected: boolean;
   onSelect: (det: Detection) => void;
+  onToggleSelection: (id: string) => void;
   onDelete: (id: string) => void;
   isDeleting: boolean;
 }
@@ -17,7 +19,9 @@ export const HistoryListItem = memo(
     virtualRow,
     measureElement,
     selectedSet,
+    isSelected,
     onSelect,
+    onToggleSelection,
     onDelete,
     isDeleting,
   }: HistoryListItemProps) => {
@@ -38,9 +42,21 @@ export const HistoryListItem = memo(
       >
         <div
           onClick={() => onSelect(det)}
-          className="rounded border border-gray-100 p-2 hover:bg-gray-50 cursor-pointer transition-colors h-full"
+          className={`rounded border p-2 hover:bg-gray-50 cursor-pointer transition-colors h-full ${
+            isSelected ? "border-primary-300 bg-primary-50" : "border-gray-100"
+          }`}
         >
           <div className="flex gap-2">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleSelection(det.id);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-4 h-4 w-4 rounded border-gray-300 text-primary-600"
+            />
             <img
               src={`${API_BASE}/detections/${det.id}/image`}
               alt=""
@@ -72,19 +88,9 @@ export const HistoryListItem = memo(
               <p className="text-xs text-gray-500 mt-0.5">
                 {det.modelType && (
                   <span
-                    className={`inline-block rounded px-1 py-0.5 mr-1 text-[10px] font-medium ${
-                      det.modelType === "sam3"
-                        ? "bg-violet-100 text-violet-700"
-                        : det.modelType === "vlm+sam2"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-blue-100 text-blue-700"
-                    }`}
+                    className="inline-block rounded px-1 py-0.5 mr-1 text-[10px] font-medium bg-violet-100 text-violet-700"
                   >
-                    {det.modelType === "sam3"
-                      ? "SAM3"
-                      : det.modelType === "vlm+sam2"
-                        ? "VLM+SAM2"
-                        : "VLM"}
+                    Grounded-SAM
                   </span>
                 )}
                 {t("trainingPanel.targetsCount", { count: det.boxes.length })}

@@ -12,6 +12,7 @@ describe("HistoryList", () => {
         isFetchingNextPage={false}
         fetchNextPage={() => {}}
         onSelect={() => {}}
+        onShowSelected={() => {}}
       />,
     );
     expect(container).toBeTruthy();

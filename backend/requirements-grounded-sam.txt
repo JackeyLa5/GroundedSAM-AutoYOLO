@@ -1,0 +1,9 @@
+# Grounded-SAM standalone server dependencies
+# Install: pip install -r requirements-grounded-sam.txt
+transformers>=4.57.1
+torch
+Pillow
+numpy
+opencv-python-headless
+torchvision
+sam2>=1.0.0

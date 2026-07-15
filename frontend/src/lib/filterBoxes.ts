@@ -1,5 +1,9 @@
 type FilterMode = "best" | "all" | "nms";
 
+function normalizeClassName(name: string): string {
+  return name.trim().replace(/[.\s。]/g, "").toLowerCase();
+}
+
 function iou(a: BBox, b: BBox): number {
   const x1 = Math.max(a.x1, b.x1);
   const y1 = Math.max(a.y1, b.y1);
@@ -13,7 +17,7 @@ function iou(a: BBox, b: BBox): number {
 }
 
 function nmsFilter(boxes: BBox[], iouThreshold: number = 0.5): BBox[] {
-  // VLM outputs in confidence order, keep earlier (higher confidence) boxes
+  // Grounded-SAM outputs in confidence order; keep earlier boxes.
   const kept: BBox[] = [];
   for (const box of boxes) {
     if (!kept.some((k) => iou(k, box) >= iouThreshold)) {
@@ -29,8 +33,9 @@ export function applyFilter(mode: FilterMode, boxes: BBox[], iouThreshold: numbe
     case "best": {
       const seen = new Set<string>();
       return boxes.filter((b) => {
-        if (seen.has(b.className)) return false;
-        seen.add(b.className);
+        const key = normalizeClassName(b.className);
+        if (seen.has(key)) return false;
+        seen.add(key);
         return true;
       });
     }

@@ -1,6 +1,6 @@
 {
   "common": {
-    "annotate": "VLM 标注",
+    "annotate": "自動標注",
     "validate": "YOLO 検証",
     "image": "画像",
     "video": "動画",
@@ -41,14 +41,15 @@
     "placeholderVideoRunning": "動画推論中。Conf/IoU 調整 →「動画検証」再実行。",
     "placeholderDefault": "画像/動画登録 → 分類入力 →「検出開始」",
     "yoloValidation": "YOLO 検証",
-    "useSam2": "SAM2 領域分割有効",
-    "useSam3Seg": "SAM3 領域分割有効"
+    "useGroundedSamSeg": "Grounded-SAM 領域分割有効"
   },
   "filter": {
     "filterMode": "絞込方式",
     "best": "最適",
     "nms": "NMS",
     "all": "全表示",
+    "categoryFilter": "分類絞込",
+    "clearCategoryFilter": "解除",
     "nmsIou": "IoU",
     "fewerBoxes": "少",
     "moreBoxes": "多"
@@ -154,6 +155,12 @@
     "deleteConfirm": "記録削除確認",
     "deleteSuccess": "記録削除完了",
     "deleteFailed": "記録削除失敗",
+    "batchDelete": "選択 {{count}} 件削除",
+    "batchDeleteConfirm": "選択 {{count}} 件を削除しますか？",
+    "batchDeleteSuccess": "{{count}} 件削除済",
+    "selectVisible": "表示分選択",
+    "showSelected": "選択 {{count}} 件表示",
+    "clearSelection": "選択解除",
     "selectedTags": "{{count}} 件選択中",
     "filterByTag": "標籤絞込",
     "noMatch": "一致無",
@@ -170,10 +177,13 @@
     "timeElapsed": "経過時間",
     "saveFilter": "絞込結果保存",
     "redetect": "再検出",
+    "redetectCurrent": "現在を再検出",
+    "redetectAll": "全件再検出",
     "exportLabel": "標籤出力",
     "exportAllDataset": "全資料集合出力 ({{count}})",
     "exportDataset": "資料集合作成出力",
     "loadingModel": "模型読込中…",
+    "samMasking": "SAM 分割中…",
     "detecting": "検出中…",
     "pleaseWait": "暫待"
   },
@@ -184,7 +194,10 @@
     "showBox": "枠表示",
     "hideBox": "枠非表示",
     "deleteBox": "検出枠削除",
-    "deleteBoxConfirm": "検出枠削除確認"
+    "deleteBoxConfirm": "検出枠削除確認",
+    "selectedBoxes": "{{count}} 件選択中",
+    "deleteSelectedBoxes": "選択削除 ({{count}})",
+    "deleteSelectedBoxesConfirm": "選択中 {{count}} 件の検出枠を削除しますか？"
   },
   "trainingPanel": {
     "variant": "模型種類",
@@ -208,6 +221,14 @@
     "chartTitle": "学習曲線指標",
     "trainStarted": "学習任務開始",
     "selectRecordRequired": "最低 1 件検出記録選択要",
+    "noPositiveTargets": "選択記録に対象がありません。再検出してください",
+    "zeroTargetWarningTitle": "対象 0 件の画像があります",
+    "zeroTargetWarningMessage": "選択中 {{count}} 件は対象 0 件です。{{action}} には含まれません。取消して再検出/補正するか、無視して続行できます。",
+    "zeroTargetAction": {
+      "train": "学習",
+      "export": "出力"
+    },
+    "ignoreAndContinue": "無視して続行",
     "selectedCountTotal": "{{current}}{{filtered}} / {{total}} 件選択中",
     "selectAll": "全選択",
     "deselectAll": "全解除",
@@ -297,24 +318,16 @@
     "cancel": "一括取消"
   },
   "modelStatus": {
-    "loaded": "VLM 模型読込済",
-    "unloaded": "VLM 模型未読込",
     "download": "模型取得中",
     "downloading": "模型取得中…",
     "loading": "GPU 転送中…",
     "error": "模型誤",
     "unload": "解放",
     "unloading": "解放中…",
-    "unloadSuccess": "VLM 模型解放完了",
-    "unloadFailed": "模型解放失敗",
-    "sam2Loaded": "SAM2 模型読込済",
-    "sam2Unloaded": "SAM2 模型未読込",
-    "sam3Loaded": "SAM3 模型読込済",
-    "sam3Unloaded": "SAM3 模型未読込",
-    "sam2UnloadSuccess": "SAM2 模型解放完了",
-    "sam2UnloadFailed": "SAM2 模型解放失敗",
-    "sam3UnloadSuccess": "SAM3 模型解放完了",
-    "sam3UnloadFailed": "SAM3 模型解放失敗",
+    "groundedSamLoaded": "Grounded-SAM 模型読込済",
+    "groundedSamUnloaded": "Grounded-SAM 模型未読込",
+    "groundedSamUnloadSuccess": "Grounded-SAM 模型解放完了",
+    "groundedSamUnloadFailed": "Grounded-SAM 模型解放失敗",
     "preparing": "準備中…",
     "stageStarting": "起動中…",
     "stageTokenizer": "字句解析器…",

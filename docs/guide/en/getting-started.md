@@ -5,15 +5,11 @@ This guide will walk you through your first object detection labeling and traini
 ## 1. Launch the Project
 
 ```bash
-# macOS / Linux
-./start.sh
-
-# Windows
-start.bat
+docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 After launching, access:
-- **Frontend Interface**: http://localhost:5173
+- **Frontend Interface**: http://localhost
 - **API Documentation**: http://localhost:8000/docs
 
 ## 2. Upload Images or Videos
@@ -34,20 +30,17 @@ After launching, access:
 
 ## 3. Choose Detection Model
 
-Use the model selector at the top of the sidebar to switch between:
+Auto-labeling uses Grounded-SAM:
 
-### VLM + SAM2 (Default)
-- VLM (LocateAnything-3B) generates bounding boxes
-- Optionally enable SAM2 segmentation for pixel-precise masks
-
-### SAM3
-- Text-driven end-to-end detection + segmentation in a single pass
+### Grounded-SAM
+- GroundingDINO generates bounding boxes from text prompts
+- SAM2 generates pixel-precise masks for detected instances
 - Open-vocabulary prompts (e.g. `cat`, `red car`)
 - Adjustable parameters:
   - **Confidence threshold** (Conf ≥ 0.5): lower = more detections
   - **Mask threshold** (Mask ≥ 0.5): higher = tighter masks
-  - **Enable SAM3 Segmentation** toggle: disable for bbox-only mode
-- Requires `HF_TOKEN` environment variable on first use; model cached locally after download
+  - **Enable segmentation** toggle: disable for bbox-only mode
+- Models download on first use and are cached locally by Hugging Face
 
 ## 4. Auto-Labeling
 
@@ -55,7 +48,7 @@ Use the model selector at the top of the sidebar to switch between:
    - Examples: `person, car, dog`
    - Natural language descriptions supported: `red car`, `person wearing hat`
 2. Click "Start Detection"
-3. The selected model generates bounding box annotations
+3. Grounded-SAM generates bounding box annotations and optional masks
    - First result appears immediately
    - Subsequent results are appended in real-time during batch upload
 
@@ -66,7 +59,7 @@ Use the model selector at the top of the sidebar to switch between:
 
 ## 5. Manual Refinement
 
-VLM annotations may not be perfect and require manual adjustment:
+Grounded-SAM annotations may not be perfect and require manual adjustment:
 
 ### View Mode
 - **All**: Display all detection boxes
@@ -110,7 +103,6 @@ dataset/
 
 1. Select detection records to train in the "YOLO Training" panel
 2. Choose YOLO series:
-   - **YOLOv5**: Classic and stable, good compatibility
    - **YOLOv8**: Balanced speed and accuracy
    - **YOLOv11**: Latest architecture, best performance
    - **YOLOv26**: Experimental, cutting-edge
@@ -159,7 +151,7 @@ After training completes, you can download:
 
 ## FAQ
 
-**Q: VLM can't detect the target?**
+**Q: Grounded-SAM can't detect the target?**
 A: Try more specific category descriptions, or check image quality
 
 **Q: Out of VRAM during training?**

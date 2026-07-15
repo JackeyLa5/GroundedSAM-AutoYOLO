@@ -10,13 +10,10 @@ from .common import BaseSchema, _coerce_uuid
 
 
 class DetectionParams(BaseSchema):
-    use_sam2: bool = False
-    use_sam3: bool = False
-    sam2_score_threshold: float = 0.0
-    sam3_text: str = ""
-    use_sam3_seg: bool = True
-    sam3_threshold: float = 0.5
-    sam3_mask_threshold: float = 0.5
+    grounded_sam_text: str = ""
+    use_grounded_sam_seg: bool = True
+    grounded_sam_threshold: float = 0.5
+    grounded_sam_mask_threshold: float = 0.5
 
 
 class DetectionBoxOut(BaseSchema):

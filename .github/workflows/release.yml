@@ -91,10 +91,11 @@ jobs:
 
           ## Installation
 
-          ### Docker (Recommended)
+          ### Docker
           \`\`\`bash
-          curl -O https://raw.githubusercontent.com/${{ github.repository }}/master/docker-compose.yml
-          docker compose up -d
+          git clone https://github.com/${{ github.repository }}.git
+          cd AutoYOLO
+          docker compose -f docker/docker-compose.yml up -d --build
           \`\`\`
 
           Access:
@@ -107,9 +108,6 @@ jobs:
           docker pull ghcr.io/${{ github.repository }}-backend:${{ github.ref_name }}
           \`\`\`
 
-          ### Manual Setup
-          See [README](https://github.com/${{ github.repository }}#manual-setup) for detailed instructions.
-
           **Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ github.ref_name }}
           EOF
 
@@ -120,13 +118,13 @@ jobs:
 
       - name: Create source archive
         run: |
-          git archive --format=tar.gz --prefix=VLM-AutoYOLO-${{ github.ref_name }}/ \
+          git archive --format=tar.gz --prefix=AutoYOLO-${{ github.ref_name }}/ \
             -o source-code.tar.gz HEAD
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: VLM-AutoYOLO ${{ github.ref_name }}
+          name: AutoYOLO ${{ github.ref_name }}
           body: ${{ steps.release_notes.outputs.notes }}
           draft: false
           prerelease: false

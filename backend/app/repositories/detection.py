@@ -26,7 +26,7 @@ class DetectionRepository:
         image_width: int,
         image_height: int,
         categories: list,  # JSONB stores Python list directly
-        model_name: str = "LocateAnything-3B",
+        model_name: str = "Grounded-SAM",
         commit: bool = False,
     ) -> Detection:
         det = Detection(
@@ -101,6 +101,14 @@ class DetectionRepository:
 
     def get_by_id(self, detection_id: str) -> Detection | None:
         return self.db.query(Detection).filter(Detection.id == detection_id).first()
+
+    def get_latest_by_image_name(self, image_name: str) -> Detection | None:
+        return (
+            self.db.query(Detection)
+            .filter(Detection.image_name == image_name)
+            .order_by(Detection.created_at.desc())
+            .first()
+        )
 
     def list(
         self,

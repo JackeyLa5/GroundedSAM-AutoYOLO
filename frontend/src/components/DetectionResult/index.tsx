@@ -1,5 +1,6 @@
-import { Dropdown } from "antd";
+import { Dropdown, Modal } from "antd";
 import { getFileUrl } from "@/lib/cache";
+import { API_BASE } from "@/lib/constants";
 
 interface Props {
   result: Detection | null;
@@ -20,10 +21,12 @@ interface Props {
   onSelectBatch: (det: Detection, file?: File) => void;
   onSelectPending?: (url: string) => void;
   onReDetect: () => void;
+  onReDetectAll?: () => void;
   onSaveBoxes: () => void;
   onDrawBox: (box: { x1: number; y1: number; x2: number; y2: number }) => void;
   isValidation?: boolean;
   isRedetecting?: boolean;
+  maskingBox?: boolean;
 }
 
 const EMPTY_BOXES: never[] = [];
@@ -47,14 +50,56 @@ export function DetectionResult({
   onSelectBatch,
   onSelectPending,
   onReDetect,
+  onReDetectAll,
   onSaveBoxes,
   onDrawBox,
   isValidation = false,
   isRedetecting = false,
+  maskingBox = false,
 }: Props) {
   const { t } = useTranslation();
 
-  const blobUrls = batchFiles.map((f) => getFileUrl(f));
+  const batchItemCount = Math.max(batchFiles.length, batchResults.length);
+  const batchPreviewUrls = Array.from({ length: batchItemCount }, (_, i) =>
+    batchFiles[i]
+      ? getFileUrl(batchFiles[i])
+      : batchResults[i]
+        ? `${API_BASE}/detections/${batchResults[i].id}/image`
+        : "",
+  );
+  const exportWithZeroTargetCheck = (ids: string[], format: string, label: string) => {
+    const selectedResults =
+      batchResults.length > 1
+        ? batchResults.filter((r) => ids.includes(r.id))
+        : result
+          ? [result]
+          : [];
+    const zero = selectedResults.filter((r) => r.boxes.length === 0);
+    const positiveIds = selectedResults.filter((r) => r.boxes.length > 0).map((r) => r.id);
+    const runExport = async (targetIds: string[]) => {
+      const blob = await exportBatch(targetIds, format);
+      downloadBlob(blob, `${label}_dataset.zip`);
+    };
+    if (positiveIds.length === 0) {
+      toast.error(t("trainingPanel.noPositiveTargets"));
+      return;
+    }
+    if (zero.length === 0) {
+      runExport(ids);
+      return;
+    }
+    Modal.confirm({
+      title: t("trainingPanel.zeroTargetWarningTitle"),
+      content: t("trainingPanel.zeroTargetWarningMessage", {
+        count: zero.length,
+        action: t("trainingPanel.zeroTargetAction.export"),
+      }),
+      okText: t("trainingPanel.ignoreAndContinue"),
+      cancelText: t("common.cancel"),
+      okButtonProps: { danger: true },
+      onOk: () => runExport(positiveIds),
+    });
+  };
 
   return (
     <div className="space-y-4">
@@ -95,6 +140,13 @@ export function DetectionResult({
           </div>
         )}
         {loading && (!result || isRedetecting) && <LoadingOverlay elapsedMs={elapsedMs} />}
+        {maskingBox && (
+          <LoadingOverlay
+            elapsedMs={0}
+            title={t("detectionResult.samMasking")}
+            subtitle={t("detectionResult.pleaseWait")}
+          />
+        )}
       </div>
 
       <div className="flex items-center justify-between">
@@ -131,14 +183,26 @@ export function DetectionResult({
             </button>
           )}
           {!isValidation && categories.length > 0 && (
-            <button
-              type="button"
-              disabled={!result || loading}
-              onClick={onReDetect}
-              className="rounded bg-orange-500 px-3 py-1 text-xs font-medium text-white hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? t("common.detecting") : t("detectionResult.redetect")}
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={!result || loading}
+                onClick={onReDetect}
+                className="rounded bg-orange-500 px-3 py-1 text-xs font-medium text-white hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? t("common.detecting") : t("detectionResult.redetectCurrent")}
+              </button>
+              {batchResults.length > 1 && onReDetectAll && (
+                <button
+                  type="button"
+                  disabled={!result || loading}
+                  onClick={onReDetectAll}
+                  className="rounded border border-orange-300 px-3 py-1 text-xs font-medium text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? t("common.detecting") : t("detectionResult.redetectAll")}
+                </button>
+              )}
+            </>
           )}
           <Dropdown
             disabled={!result || loading}
@@ -203,8 +267,7 @@ export function DetectionResult({
                     voc: "VOC",
                     createml: "CreateML",
                   };
-                  const blob = await exportBatch(ids, key);
-                  downloadBlob(blob, `${labels[key] ?? key}_dataset.zip`);
+                  exportWithZeroTargetCheck(ids, key, labels[key] ?? key);
                 },
               }}
               trigger={["click"]}
@@ -223,17 +286,19 @@ export function DetectionResult({
         </div>
       </div>
 
-      {batchFiles.length > 1 && (
+      {batchItemCount > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2">
-          {batchFiles.map((file, i) => {
+          {Array.from({ length: batchItemCount }, (_, i) => {
+            const file = batchFiles[i];
             const res = batchResults[i];
             const done = !!res;
             const pending = !done && loading;
-            const anyPendingSelected = blobUrls.some(
+            const preview = batchPreviewUrls[i];
+            const anyPendingSelected = batchPreviewUrls.some(
               (url, idx) => !batchResults[idx] && previewUrl === url,
             );
             const isActive = anyPendingSelected
-              ? previewUrl === blobUrls[i]
+              ? previewUrl === preview
               : done && result?.id === res.id;
             return (
               <button
@@ -242,7 +307,7 @@ export function DetectionResult({
                   if (res) {
                     onSelectBatch(res, file);
                   } else {
-                    onSelectPending?.(blobUrls[i]);
+                    onSelectPending?.(preview);
                   }
                 }}
                 disabled={false}
@@ -255,8 +320,8 @@ export function DetectionResult({
                 }`}
               >
                 <img
-                  src={blobUrls[i]}
-                  alt={file.name}
+                  src={preview}
+                  alt={file?.name ?? res?.imageName ?? ""}
                   className="h-14 w-14 rounded object-cover"
                 />
                 {done ? (
@@ -287,16 +352,20 @@ export function DetectionResult({
   );
 }
 
-function LoadingOverlay({ elapsedMs }: { elapsedMs: number }) {
+function LoadingOverlay({
+  elapsedMs,
+  title,
+  subtitle,
+}: {
+  elapsedMs: number;
+  title?: string;
+  subtitle?: string;
+}) {
   const { t } = useTranslation();
-  const { vlm, sam2, sam3 } = useModelEvents();
+  const { groundedSam } = useModelEvents();
   const modelLoading =
-    vlm.state === "loading" ||
-    vlm.state === "downloading" ||
-    sam2.state === "loading" ||
-    sam2.state === "downloading" ||
-    sam3.status === "loading" ||
-    sam3.status === "starting";
+    groundedSam.status === "loading" ||
+    groundedSam.status === "starting";
 
   return (
     <div className="absolute inset-0 bg-white/60 rounded-lg flex flex-col items-center justify-center gap-3">
@@ -317,10 +386,10 @@ function LoadingOverlay({ elapsedMs }: { elapsedMs: number }) {
         />
       </svg>
       <p className="text-sm font-medium text-gray-600">
-        {modelLoading ? t("detectionResult.loadingModel") : t("detectionResult.detecting")}
+        {title ?? (modelLoading ? t("detectionResult.loadingModel") : t("detectionResult.detecting"))}
       </p>
       <p className="text-xs text-gray-400">
-        {modelLoading ? t("detectionResult.pleaseWait") : `${(elapsedMs / 1000).toFixed(1)}s`}
+        {subtitle ?? (modelLoading ? t("detectionResult.pleaseWait") : `${(elapsedMs / 1000).toFixed(1)}s`)}
       </p>
     </div>
   );

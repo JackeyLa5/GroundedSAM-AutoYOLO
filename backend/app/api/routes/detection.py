@@ -15,11 +15,14 @@ from ...core.exceptions import AppError, NotFoundError
 from ...models.detection import FilterMode
 from ...repositories.detection import DetectionRepository
 from ...schemas.common import APIResponse, BaseSchema
-from ...schemas.detection import DetectionListItem, DetectionOut, DetectionParams
+from ...schemas.detection import DetectionBoxOut, DetectionListItem, DetectionOut, DetectionParams
 from ...services.detection_service import process_detection
-from ...services.locate_anything import get_model_status, is_model_loaded, unload_model
-from ...services.sam2_service import get_sam2_status, is_sam_loaded, unload_sam
-from ...services.sam3_client import is_sam3_running, stop_sam3_server
+from ...services.grounded_sam_client import (
+    GROUNDED_SAM_URL,
+    is_grounded_sam_running,
+    mask_box_grounded_sam,
+    stop_grounded_sam_server,
+)
 from ..deps import get_repo
 
 logger = logging.getLogger(__name__)
@@ -38,13 +41,11 @@ def _save_upload(file: UploadFile) -> tuple[str, str]:
 async def create_detection(
     file: UploadFile = File(...),
     categories: str = Form(...),
-    use_sam2: bool = Form(False),
-    use_sam3: bool = Form(False),
-    sam2_score_threshold: float = Form(0.0, ge=0.0, le=1.0),
-    sam3_text: str = Form(""),
-    use_sam3_seg: bool = Form(True),
-    sam3_threshold: float = Form(0.5, ge=0.0, le=1.0),
-    sam3_mask_threshold: float = Form(0.5, ge=0.0, le=1.0),
+    grounded_sam_text: str = Form(""),
+    use_grounded_sam_seg: bool = Form(True),
+    grounded_sam_threshold: float = Form(0.5, ge=0.0, le=1.0),
+    grounded_sam_mask_threshold: float = Form(0.5, ge=0.0, le=1.0),
+    replace_detection_id: str = Form(""),
     repo: DetectionRepository = Depends(get_repo),
 ) -> APIResponse:
     if not file.content_type or not file.content_type.startswith("image/"):
@@ -63,8 +64,17 @@ async def create_detection(
     if not cat_list:
         raise HTTPException(400, detail="categories cannot be empty")
 
-    filepath, safe_name = _save_upload(file)
     original_name = Path(file.filename).name  # type: ignore[arg-type]
+    replace_id = replace_detection_id.strip() or None
+    if not replace_id:
+        existing = repo.get_latest_by_image_name(original_name)
+        if existing:
+            replace_id = str(existing.id)
+
+    filepath, safe_name = _save_upload(file)
+    if replace_id and not repo.get_by_id(replace_id):
+        Path(filepath).unlink(missing_ok=True)
+        raise HTTPException(404, detail=f"Detection not found: {replace_id}")
 
     try:
         detection = await process_detection(
@@ -72,18 +82,20 @@ async def create_detection(
             original_name=original_name,
             categories=cat_list,
             params=DetectionParams(
-                use_sam2=use_sam2,
-                use_sam3=use_sam3,
-                sam2_score_threshold=sam2_score_threshold,
-                sam3_text=sam3_text,
-                use_sam3_seg=use_sam3_seg,
-                sam3_threshold=sam3_threshold,
-                sam3_mask_threshold=sam3_mask_threshold,
+                grounded_sam_text=grounded_sam_text,
+                use_grounded_sam_seg=use_grounded_sam_seg,
+                grounded_sam_threshold=grounded_sam_threshold,
+                grounded_sam_mask_threshold=grounded_sam_mask_threshold,
             ),
             repo=repo,
+            replace_detection_id=replace_id,
         )
     except AppError as exc:
+        if replace_id:
+            Path(filepath).unlink(missing_ok=True)
         raise HTTPException(exc.status_code, detail=exc.detail) from exc
+    if replace_id:
+        Path(filepath).unlink(missing_ok=True)
 
     return APIResponse(
         data=DetectionOut.model_validate(detection).model_dump(by_alias=True),
@@ -153,11 +165,35 @@ class AddBoxBody(BaseSchema):
     y2: int
 
 
+class BatchDeleteBody(BaseSchema):
+    detection_ids: list[str]
+
+
 class UpdateBoxBody(BaseSchema):
     x1: int
     y1: int
     x2: int
     y2: int
+
+
+@router.post("/detections/delete-batch")
+def delete_detections_batch(
+    body: BatchDeleteBody,
+    repo: DetectionRepository = Depends(get_repo),
+) -> APIResponse:
+    deleted = 0
+    for detection_id in body.detection_ids:
+        det = repo.get_by_id(detection_id)
+        if not det:
+            continue
+        try:
+            Path(det.image_path).unlink(missing_ok=True)
+        except OSError:
+            logger.warning("Could not delete image file: %s", det.image_path)
+        repo.delete(det)
+        deleted += 1
+    repo.db.commit()
+    return APIResponse(data={"deleted": deleted})
 
 
 @router.post("/detections/{detection_id}/boxes", status_code=201)
@@ -169,20 +205,25 @@ def add_box(
     det = repo.get_by_id(detection_id)
     if not det:
         raise NotFoundError("Detection", detection_id)
-    repo.add_boxes(
+    box_dict = {
+        "class_name": body.class_name,
+        "x1": body.x1,
+        "y1": body.y1,
+        "x2": body.x2,
+        "y2": body.y2,
+    }
+    try:
+        polygon = mask_box_grounded_sam(det.image_path, box_dict)
+        if polygon:
+            box_dict["mask_polygon"] = polygon
+    except Exception:
+        logger.exception("Failed to generate SAM mask for manual box")
+    boxes = repo.add_boxes(
         detection_id,
-        [
-            {
-                "class_name": body.class_name,
-                "x1": body.x1,
-                "y1": body.y1,
-                "x2": body.x2,
-                "y2": body.y2,
-            }
-        ],
+        [box_dict],
         commit=True,
     )
-    return APIResponse(data={"ok": True})
+    return APIResponse(data=DetectionBoxOut.model_validate(boxes[0]).model_dump(by_alias=True))
 
 
 class ReplaceBoxItem(BaseSchema):
@@ -259,52 +300,12 @@ def get_detection_image(
     return FileResponse(str(path))
 
 
-@router.get("/model/status")
-def model_status() -> APIResponse:
-    status = get_model_status()
-    return APIResponse(
-        data={
-            "loaded": status["state"] == "loaded",
-            "state": status["state"],
-            "stage": status["stage"],
-            "progress": status["progress"],
-            "error": status["error"],
-        }
-    )
-
-
-@router.post("/model/unload", status_code=204)
-def model_unload() -> None:
-    if is_model_loaded():
-        unload_model()
-
-
-@router.get("/model/sam2/status")
-def sam2_status() -> APIResponse:
-    status = get_sam2_status()
-    return APIResponse(
-        data={
-            "loaded": status["state"] == "loaded",
-            "state": status["state"],
-            "stage": status["stage"],
-            "progress": status["progress"],
-            "error": status["error"],
-        }
-    )
-
-
-@router.post("/model/sam2/unload", status_code=204)
-def sam2_unload() -> None:
-    if is_sam_loaded():
-        unload_sam()
-
-
-@router.get("/model/sam3/status")
-def sam3_status() -> APIResponse:
+@router.get("/model/grounded-sam/status")
+def grounded_sam_status() -> APIResponse:
     import urllib.request
 
     try:
-        resp = urllib.request.urlopen("http://127.0.0.1:8002/health", timeout=2)
+        resp = urllib.request.urlopen(f"{GROUNDED_SAM_URL}/health", timeout=2)
         import json as _json
 
         data = _json.loads(resp.read())
@@ -316,7 +317,7 @@ def sam3_status() -> APIResponse:
 
 @router.get("/model/events")
 async def model_events():
-    """SSE endpoint that pushes combined model status for VLM, SAM2, and SAM3."""
+    """SSE endpoint that pushes Grounded-SAM model status."""
 
     async def event_stream():
         import urllib.request
@@ -326,41 +327,32 @@ async def model_events():
         fast_interval = 1.5
         slow_interval = 10.0
         stable_count = 0
-        prev_sam3: dict = {"loaded": False, "status": "unloaded"}
+        prev_grounded_sam: dict = {"loaded": False, "status": "unloaded"}
 
         while True:
-            # VLM status
-            vlm = get_model_status()
-
-            # SAM2 status
-            sam2 = get_sam2_status()
-
-            # SAM3 status — keep previous value on transient health check failure
-            # (SAM3's WSGI server is single-threaded; /health times out during inference)
-            sam3_data = prev_sam3
+            # Grounded-SAM-2 status — keep previous value on transient health check failure.
+            # Its WSGI server is single-threaded; /health can time out during inference.
+            grounded_sam_data = prev_grounded_sam
             try:
-                resp = urllib.request.urlopen("http://127.0.0.1:8002/health", timeout=1)
+                resp = urllib.request.urlopen(f"{GROUNDED_SAM_URL}/health", timeout=1)
                 import json as _json
 
                 data = _json.loads(resp.read())
-                sam3_data = {
+                grounded_sam_data = {
                     "loaded": data.get("status") == "loaded",
                     "status": data.get("status", "unloaded"),
                 }
-                prev_sam3 = sam3_data
+                prev_grounded_sam = grounded_sam_data
             except Exception:
                 pass
 
-            payload = json.dumps({"vlm": vlm, "sam2": sam2, "sam3": sam3_data})
+            payload = json.dumps({"groundedSam": grounded_sam_data})
             if payload != prev:
                 prev = payload
                 yield f"data: {payload}\n\n"
 
             # Use fast interval while any model is in transition, slow otherwise
-            all_stable = all(
-                s in ("loaded", "unloaded")
-                for s in (vlm.get("state", ""), sam2.get("state", ""), sam3_data.get("status", ""))
-            )
+            all_stable = grounded_sam_data.get("status", "") in ("loaded", "unloaded")
             if all_stable:
                 stable_count += 1
             else:
@@ -372,7 +364,7 @@ async def model_events():
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-@router.post("/model/sam3/unload", status_code=204)
-def sam3_unload() -> None:
-    if is_sam3_running():
-        stop_sam3_server()
+@router.post("/model/grounded-sam/unload", status_code=204)
+def grounded_sam_unload() -> None:
+    if is_grounded_sam_running():
+        stop_grounded_sam_server()

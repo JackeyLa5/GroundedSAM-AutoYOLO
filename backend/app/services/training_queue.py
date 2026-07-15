@@ -112,7 +112,7 @@ def _worker_loop() -> None:
                 task_type,
             ),
             name=f"train-{job_id[:8]}",
-            daemon=True,
+            daemon=False,
         )
         _running_process = proc
         proc.start()

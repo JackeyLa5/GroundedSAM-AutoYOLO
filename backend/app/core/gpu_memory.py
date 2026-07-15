@@ -140,18 +140,9 @@ def _detect_device(override: str = "") -> str:
     if torch.backends.mps.is_available():
         return "mps"
     raise RuntimeError(
-        "No GPU detected. LocateAnything-3B requires CUDA (NVIDIA GPU) "
+        "No GPU detected. Grounded-SAM requires CUDA (NVIDIA GPU) "
         "or MPS (Apple Silicon). CPU inference is not supported."
     )
-
-
-def validate_vlm_device(device: str) -> None:
-    """Fail fast only for unsupported devices, without imposing a VRAM cutoff."""
-    if device == "cpu":
-        raise RuntimeError(
-            "LocateAnything-3B cannot run on CPU in this application. "
-            "Expose a CUDA GPU to the container or use Apple Silicon MPS in manual setup."
-        )
 
 
 def create_memory_manager(device: str) -> GPUMemoryManager:

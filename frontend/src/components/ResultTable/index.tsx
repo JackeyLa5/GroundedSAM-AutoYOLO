@@ -1,23 +1,88 @@
+import { useEffect, useState } from "react";
 import { Popconfirm } from "antd";
 
 interface Props {
   boxes: BBox[];
   hiddenIndices: Set<string>;
   onToggleVisibility: (boxId: string) => void;
-  onDelete?: (boxId: string) => void;
+  onDelete?: (boxId: string) => void | Promise<void>;
 }
 
 export function ResultTable({ boxes, hiddenIndices, onToggleVisibility, onDelete }: Props) {
   const { t } = useTranslation();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deletingSelected, setDeletingSelected] = useState(false);
+
+  useEffect(() => {
+    const valid = new Set(boxes.map((box) => box.id));
+    setSelectedIds((prev) => new Set([...prev].filter((id) => valid.has(id))));
+  }, [boxes]);
+
+  const allSelected = boxes.length > 0 && boxes.every((box) => selectedIds.has(box.id));
+  const toggleAll = () => {
+    setSelectedIds(allSelected ? new Set() : new Set(boxes.map((box) => box.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const deleteSelected = async () => {
+    if (!onDelete || selectedIds.size === 0) return;
+    setDeletingSelected(true);
+    try {
+      for (const id of [...selectedIds]) {
+        await onDelete(id);
+      }
+      setSelectedIds(new Set());
+    } finally {
+      setDeletingSelected(false);
+    }
+  };
+
   if (boxes.length === 0) {
     return <p className="py-4 text-sm text-gray-400 text-center">{t("resultTable.noTargets")}</p>;
   }
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200">
+      {onDelete && (
+        <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-3 py-2 text-xs">
+          <label className="flex items-center gap-2 text-gray-500">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              onChange={toggleAll}
+              className="h-3.5 w-3.5 rounded border-gray-300"
+            />
+            {t("resultTable.selectedBoxes", { count: selectedIds.size })}
+          </label>
+          {selectedIds.size > 0 && (
+            <Popconfirm
+              title={t("resultTable.deleteSelectedBoxesConfirm", { count: selectedIds.size })}
+              onConfirm={deleteSelected}
+              okText={t("common.delete")}
+              cancelText={t("common.cancel")}
+              okButtonProps={{ danger: true }}
+            >
+              <button
+                type="button"
+                disabled={deletingSelected}
+                className="text-red-500 hover:text-red-600 disabled:opacity-50"
+              >
+                {t("resultTable.deleteSelectedBoxes", { count: selectedIds.size })}
+              </button>
+            </Popconfirm>
+          )}
+        </div>
+      )}
       <table className="w-full text-sm">
         <thead className="bg-gray-50">
           <tr>
+            {onDelete && <th className="px-3 py-2 w-8" />}
             <th className="px-4 py-2 text-left font-medium text-gray-600">#</th>
             <th className="px-4 py-2 text-left font-medium text-gray-600">
               {t("resultTable.category")}
@@ -37,6 +102,16 @@ export function ResultTable({ boxes, hiddenIndices, onToggleVisibility, onDelete
         <tbody>
           {boxes.map((box, i) => (
             <tr key={box.id} className="border-t border-gray-100 hover:bg-gray-50">
+              {onDelete && (
+                <td className="px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(box.id)}
+                    onChange={() => toggleOne(box.id)}
+                    className="h-3.5 w-3.5 rounded border-gray-300"
+                  />
+                </td>
+              )}
               <td className="px-4 py-2 text-gray-400">{i + 1}</td>
               <td className="px-4 py-2 font-medium text-gray-800">{box.className}</td>
               <td className="px-4 py-2 text-gray-600">{box.x1}</td>
@@ -105,6 +180,7 @@ export function ResultTable({ boxes, hiddenIndices, onToggleVisibility, onDelete
                     okButtonProps={{ danger: true }}
                   >
                     <button
+                      disabled={deletingSelected}
                       className="text-xs text-red-400 hover:text-red-600 transition-colors"
                       title={t("resultTable.deleteBox")}
                     >

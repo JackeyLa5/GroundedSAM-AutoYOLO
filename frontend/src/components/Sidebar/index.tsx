@@ -2,8 +2,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ImageUploader } from "@/components/ImageUploader";
 import { HistoryList } from "@/components/HistoryList";
 import { BatchProgress } from "@/components/BatchProgress";
-import { ModelStatus } from "@/components/ModelStatus";
-import { Sam3Status } from "@/components/Sam3Status";
+import { GroundedSamStatus } from "@/components/GroundedSamStatus";
 import { TrainingPanel } from "@/components/TrainingPanel";
 import { VideoPanel } from "@/components/VideoPanel";
 import { ValidationSettings } from "@/components/ValidationSettings";
@@ -19,6 +18,7 @@ export interface SidebarProps {
   handleFiles: (fs: File[]) => void;
   handleDetect: () => void;
   handleSelectHistory: (det: Detection) => void;
+  handleShowHistoryBatch: (ids: string[]) => void;
   loading: boolean;
   batchProgress: { current: number; total: number };
   batchResults: Detection[];
@@ -36,6 +36,7 @@ export function Sidebar({
   handleFiles,
   handleDetect,
   handleSelectHistory,
+  handleShowHistoryBatch,
   loading,
   batchProgress,
   batchResults,
@@ -56,8 +57,6 @@ export function Sidebar({
     files, setFiles,
     setPreviewUrl,
     setBatchResults: setBatch,
-    setUseSam2,
-    useSam3, setUseSam3,
     validateVideoId, setValidateVideoId,
     setValidateRunKey,
     externalModelFile, setExternalModelFile,
@@ -65,8 +64,13 @@ export function Sidebar({
     validateIou, setValidateIou,
     filterMode, setFilterMode,
     nmsIou, setNmsIou,
+    boxCategoryFilter, setBoxCategoryFilter,
     setHiddenIndices,
   } = useAppStore();
+  const resultCategories = useMemo(
+    () => Array.from(new Set((result?.boxes ?? []).map((box) => box.className))).sort(),
+    [result],
+  );
 
   return (
     <aside
@@ -75,28 +79,7 @@ export function Sidebar({
     >
       <SidebarHeader />
 
-      {/* Model selector */}
-      <div className="flex rounded-lg border border-gray-200/60 bg-gray-100/80 p-1 relative min-h-[36px] mb-2 shadow-inner">
-        {(["vlm+sam2", "sam3"] as const).map((mode) => {
-          const active = mode === "sam3" ? useSam3 : !useSam3;
-          return (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => { setUseSam2(mode === "vlm+sam2"); setUseSam3(mode === "sam3"); }}
-              className={`flex-1 text-xs font-semibold px-3 py-1 rounded-md transition-all duration-300 cursor-pointer relative z-10 ${
-                active
-                  ? "bg-white text-primary-600 shadow-sm ring-1 ring-black/5"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
-              }`}
-            >
-              {mode === "sam3" ? "SAM3" : "VLM + SAM2"}
-            </button>
-          );
-        })}
-      </div>
-
-      {useSam3 ? <Sam3Status /> : <ModelStatus />}
+      <GroundedSamStatus />
 
       {/* Mode tabs */}
       <div className="flex border-b border-gray-200 mb-2">
@@ -195,6 +178,9 @@ export function Sidebar({
           onFilterModeChange={setFilterMode}
           nmsIou={nmsIou}
           onNmsIouChange={setNmsIou}
+          categories={resultCategories}
+          selectedCategories={boxCategoryFilter}
+          onSelectedCategoriesChange={setBoxCategoryFilter}
           setHiddenIndices={setHiddenIndices}
         />
       )}
@@ -212,6 +198,7 @@ export function Sidebar({
               isFetchingNextPage={historyQuery.isFetchingNextPage}
               fetchNextPage={historyQuery.fetchNextPage}
               onSelect={handleSelectHistory}
+              onShowSelected={handleShowHistoryBatch}
             />
           </ErrorBoundary>
         </Suspense>

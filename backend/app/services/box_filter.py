@@ -1,5 +1,11 @@
 """Apply filter mode to a list of box dicts."""
 
+import re
+
+
+def _normalize_class_name(name: str) -> str:
+    return re.sub(r"[.\s。]+", "", (name or "").strip()).lower()
+
 
 def _iou(a: dict, b: dict) -> float:
     x1 = max(a["x1"], b["x1"])
@@ -26,7 +32,7 @@ def best_per_class(boxes: list[dict]) -> list[dict]:
     seen: set[str] = set()
     result: list[dict] = []
     for box in boxes:
-        name = box.get("class_name", "")
+        name = _normalize_class_name(box.get("class_name", ""))
         if name not in seen:
             seen.add(name)
             result.append(box)

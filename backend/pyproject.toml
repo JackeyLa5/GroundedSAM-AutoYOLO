@@ -1,7 +1,7 @@
 [project]
-name = "locate-anything-backend"
+name = "autoyolo-backend"
 version = "1.5.13"
-description = "Backend API for VLM-AutoYOLO - VLM-powered auto-labeling and YOLO training platform"
+description = "Backend API for AutoYOLO - Grounded-SAM auto-labeling and YOLO training platform"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",

@@ -1,6 +1,6 @@
 {
   "imageName": "pexels-5lfilm-19854242.jpg",
-  "modelType": "vlm",
+  "modelType": "grounded-sam",
   "imageWidth": 3456,
   "imageHeight": 5184,
   "boxCount": 1,

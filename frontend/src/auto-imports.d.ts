@@ -31,6 +31,7 @@ declare global {
   const ExtractionPanel: typeof import('./components/VideoPanel/ExtractionPanel').ExtractionPanel
   const FilterPanel: typeof import('./components/FilterPanel/index').FilterPanel
   const Fragment: typeof import('react').Fragment
+  const GroundedSamStatus: typeof import('./components/GroundedSamStatus/index').GroundedSamStatus
   const HistoryList: typeof import('./components/HistoryList/index').HistoryList
   const HistoryListItem: typeof import('./components/HistoryListItem/index').HistoryListItem
   const HistorySkeleton: typeof import('./components/LoadingSkeleton/index').HistorySkeleton
@@ -46,7 +47,6 @@ declare global {
   const QueryClient: typeof import('@tanstack/react-query').QueryClient
   const QueryClientProvider: typeof import('@tanstack/react-query').QueryClientProvider
   const ResultTable: typeof import('./components/ResultTable/index').ResultTable
-  const Sam3Status: typeof import('./components/Sam3Status/index').Sam3Status
   const Sidebar: typeof import('./components/Sidebar/index').Sidebar
   const SidebarHeader: typeof import('./components/Sidebar/Header').SidebarHeader
   const StatusBadge: typeof import('./components/Training/StatusBadge/index').StatusBadge
@@ -65,18 +65,20 @@ declare global {
   const VideoValidator: typeof import('./components/VideoValidator/index').VideoValidator
   const addBox: typeof import('./services/api').addBox
   const applyFilter: typeof import('./lib/filterBoxes').applyFilter
+  const batchFileDetectionMap: typeof import('./lib/cache').batchFileDetectionMap
   const batchFileMap: typeof import('./lib/cache').batchFileMap
   const cache: typeof import('react').cache
   const cacheSignal: typeof import('react').cacheSignal
   const cancelImport: typeof import('./services/api').cancelImport
   const cancelTrainingJob: typeof import('./services/api').cancelTrainingJob
   const chartUrl: typeof import('./services/api').chartUrl
-  const checkSam3Health: typeof import('./services/api').checkSam3Health
+  const checkGroundedSamHealth: typeof import('./services/api').checkGroundedSamHealth
   const createContext: typeof import('react').createContext
   const createRef: typeof import('react').createRef
   const deleteAllVideos: typeof import('./services/api').deleteAllVideos
   const deleteBox: typeof import('./services/api').deleteBox
   const deleteDetection: typeof import('./services/api').deleteDetection
+  const deleteDetectionsBatch: typeof import('./services/api').deleteDetectionsBatch
   const deleteTrainingJob: typeof import('./services/api').deleteTrainingJob
   const deleteVideo: typeof import('./services/api').deleteVideo
   const detectImage: typeof import('./services/api').detectImage
@@ -96,6 +98,7 @@ declare global {
   const forwardRef: typeof import('react').forwardRef
   const generateYoloTxt: typeof import('./lib/yoloExport').generateYoloTxt
   const getDetection: typeof import('./services/api').getDetection
+  const getFileIdentity: typeof import('./lib/cache').getFileIdentity
   const getFileUrl: typeof import('./lib/cache').getFileUrl
   const getModelStatus: typeof import('./services/api').getModelStatus
   const getSam2Status: typeof import('./services/api').getSam2Status
@@ -119,9 +122,7 @@ declare global {
   const startTransition: typeof import('react').startTransition
   const toast: typeof import('react-hot-toast').toast
   const tokenCache: typeof import('./lib/constants').tokenCache
-  const unloadModel: typeof import('./services/api').unloadModel
-  const unloadSam2: typeof import('./services/api').unloadSam2
-  const unloadSam3: typeof import('./services/api').unloadSam3
+  const unloadGroundedSam: typeof import('./services/api').unloadGroundedSam
   const uploadCache: typeof import('./lib/constants').uploadCache
   const uploadVideo: typeof import('./services/api').uploadVideo
   const use: typeof import('react').use
@@ -146,6 +147,7 @@ declare global {
   const useDeepCompareLayoutEffect: typeof import('ahooks').useDeepCompareLayoutEffect
   const useDeferredValue: typeof import('react').useDeferredValue
   const useDeleteDetectionMutation: typeof import('./hooks/useDetection').useDeleteDetectionMutation
+  const useDeleteDetectionsBatchMutation: typeof import('./hooks/useDetection').useDeleteDetectionsBatchMutation
   const useDetectMutation: typeof import('./hooks/useDetection').useDetectMutation
   const useDetectionAnnotation: typeof import('./hooks/useDetectionAnnotation').useDetectionAnnotation
   const useDetectionHistory: typeof import('./hooks/useDetectionHistory').useDetectionHistory

@@ -11,7 +11,7 @@ import subprocess
 from PIL import Image
 
 CAT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "test_images", "cat")
-THUMB_DIR = os.path.join(tempfile.gettempdir(), "vlm_autoyolo_bench_thumb")
+THUMB_DIR = os.path.join(tempfile.gettempdir(), "autoyolo_bench_thumb")
 URL = "http://127.0.0.1:8000/api/v1/detect"
 ROUNDS = 4
 
@@ -139,17 +139,17 @@ if __name__ == "__main__":
     create_thumbnails()
     wait_for_server()
 
-    # 1. VLM only (Thumbnails)
-    results.append(run_suite("VLM only (Thumbnail)", THUMB_DIR, use_sam2=False))
+    # 1. Grounded-SAM bbox only (Thumbnails)
+    results.append(run_suite("Grounded-SAM bbox only (Thumbnail)", THUMB_DIR, use_sam2=False))
 
-    # 2. VLM only (Large)
-    results.append(run_suite("VLM only (Large)", CAT_DIR, use_sam2=False))
+    # 2. Grounded-SAM bbox only (Large)
+    results.append(run_suite("Grounded-SAM bbox only (Large)", CAT_DIR, use_sam2=False))
 
-    # 3. VLM + SAM2 (Thumbnails)
-    results.append(run_suite("VLM + SAM2 (Thumbnail)", THUMB_DIR, use_sam2=True))
+    # 3. Grounded-SAM with segmentation (Thumbnails)
+    results.append(run_suite("Grounded-SAM with seg (Thumbnail)", THUMB_DIR, use_sam2=True))
 
-    # 4. VLM + SAM2 (Large)
-    results.append(run_suite("VLM + SAM2 (Large)", CAT_DIR, use_sam2=True))
+    # 4. Grounded-SAM with segmentation (Large)
+    results.append(run_suite("Grounded-SAM with seg (Large)", CAT_DIR, use_sam2=True))
 
     # Print final summary
     print("\n" + "=" * 60)

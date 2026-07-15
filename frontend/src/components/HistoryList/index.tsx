@@ -1,3 +1,6 @@
+import { Popconfirm } from "antd";
+import { useDeleteDetectionMutation, useDeleteDetectionsBatchMutation } from "@/hooks/useDetection";
+
 interface Props {
   allItems: Detection[];
   total: number;
@@ -5,6 +8,7 @@ interface Props {
   isFetchingNextPage: boolean;
   fetchNextPage: () => void;
   onSelect: (det: Detection) => void;
+  onShowSelected: (ids: string[]) => void;
 }
 
 export function HistoryList({
@@ -14,9 +18,11 @@ export function HistoryList({
   isFetchingNextPage,
   fetchNextPage,
   onSelect,
+  onShowSelected,
 }: Props) {
   const { t } = useTranslation();
   const deleteMut = useDeleteDetectionMutation();
+  const batchDeleteMut = useDeleteDetectionsBatchMutation();
   const list = useMemo(() => allItems, [allItems]);
   const [loadingAll, handleLoadAll] = useLoadAll(fetchNextPage);
 
@@ -29,6 +35,7 @@ export function HistoryList({
   }, [list]);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, { wait: 200 });
   const [open, setOpen] = useState(false);
@@ -64,6 +71,33 @@ export function HistoryList({
       return parseCategories(d.categories).some((c) => selected.has(c));
     });
   }, [list, selected]);
+
+  const toggleDetection = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectFiltered = () => {
+    setSelectedIds(new Set(filtered.map((d) => d.id)));
+  };
+
+  const clearSelectedIds = () => setSelectedIds(new Set());
+  const orderedSelectedIds = useMemo(
+    () => filtered.filter((det) => selectedIds.has(det.id)).map((det) => det.id),
+    [filtered, selectedIds],
+  );
+
+  const deleteSelected = () => {
+    const ids = orderedSelectedIds;
+    if (ids.length === 0) return;
+    batchDeleteMut.mutate(ids, {
+      onSuccess: () => setSelectedIds(new Set()),
+    });
+  };
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -171,6 +205,52 @@ export function HistoryList({
         )}
       </p>
 
+      <div className="flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          onClick={selectFiltered}
+          disabled={filtered.length === 0 || batchDeleteMut.isPending}
+          className="text-primary-600 hover:text-primary-700 disabled:opacity-50"
+        >
+          {t("historyList.selectVisible")}
+        </button>
+        {selectedIds.size > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={clearSelectedIds}
+              disabled={batchDeleteMut.isPending}
+              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
+              {t("historyList.clearSelection")}
+            </button>
+            <button
+              type="button"
+              onClick={() => onShowSelected(orderedSelectedIds)}
+              disabled={orderedSelectedIds.length === 0 || batchDeleteMut.isPending}
+              className="text-primary-600 hover:text-primary-700 disabled:opacity-50"
+            >
+              {t("historyList.showSelected", { count: orderedSelectedIds.length })}
+            </button>
+            <Popconfirm
+              title={t("historyList.batchDeleteConfirm", { count: selectedIds.size })}
+              onConfirm={deleteSelected}
+              okText={t("common.delete")}
+              cancelText={t("common.cancel")}
+              okButtonProps={{ danger: true }}
+            >
+              <button
+                type="button"
+                disabled={batchDeleteMut.isPending}
+                className="text-red-500 hover:text-red-600 disabled:opacity-50"
+              >
+                {t("historyList.batchDelete", { count: selectedIds.size })}
+              </button>
+            </Popconfirm>
+          </>
+        )}
+      </div>
+
       {filtered.length === 0 ? (
         <p className="py-4 text-xs text-gray-400 text-center">{t("historyList.noMatchRecords")}</p>
       ) : (
@@ -191,9 +271,21 @@ export function HistoryList({
                   virtualRow={virtualRow}
                   measureElement={rowVirtualizer.measureElement}
                   selectedSet={selected}
+                  isSelected={selectedIds.has(det.id)}
                   onSelect={onSelect}
-                  onDelete={(id) => deleteMut.mutate(id)}
-                  isDeleting={deleteMut.isPending}
+                  onToggleSelection={toggleDetection}
+                  onDelete={(id) =>
+                    deleteMut.mutate(id, {
+                      onSuccess: () => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          next.delete(id);
+                          return next;
+                        });
+                      },
+                    })
+                  }
+                  isDeleting={deleteMut.isPending || batchDeleteMut.isPending}
                 />
               );
             })}

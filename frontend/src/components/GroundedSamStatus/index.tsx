@@ -1,17 +1,17 @@
-export function Sam3Status() {
+export function GroundedSamStatus() {
   const { t } = useTranslation();
-  const { sam3 } = useModelEvents();
+  const { groundedSam } = useModelEvents();
   const [unloading, setUnloading] = useState(false);
 
-  const loaded = sam3.status === "loaded";
-  const isLoading = sam3.status === "starting" || sam3.status === "loading";
+  const loaded = groundedSam.status === "loaded";
+  const isLoading = groundedSam.status === "starting" || groundedSam.status === "loading";
 
   const handleUnload = useCallback(async () => {
     setUnloading(true);
     try {
-      await unloadSam3();
+      await unloadGroundedSam();
     } catch {
-      toast.error(t("modelStatus.sam3UnloadFailed"));
+      toast.error(t("modelStatus.groundedSamUnloadFailed"));
     } finally {
       setUnloading(false);
     }
@@ -32,8 +32,8 @@ export function Sam3Status() {
             {isLoading
               ? t("modelStatus.loading")
               : loaded
-                ? t("modelStatus.sam3Loaded")
-                : t("modelStatus.sam3Unloaded")}
+                ? t("modelStatus.groundedSamLoaded")
+                : t("modelStatus.groundedSamUnloaded")}
           </span>
         </span>
         {loaded && (

@@ -5,20 +5,14 @@ interface AppState {
   // Model Config
   appMode: "annotate" | "validate";
   setAppMode: (mode: "annotate" | "validate") => void;
-  useSam2: boolean;
-  setUseSam2: (v: boolean) => void;
-  useSam3: boolean;
-  setUseSam3: (v: boolean) => void;
-  useSam3Seg: boolean;
-  setUseSam3Seg: (v: boolean) => void;
-  sam3Threshold: number;
-  setSam3Threshold: (v: number) => void;
-  sam3MaskThreshold: number;
-  setSam3MaskThreshold: (v: number) => void;
-  sam2ScoreThreshold: number;
-  setSam2ScoreThreshold: (v: number) => void;
-  sam3Text: string;
-  setSam3Text: (v: string) => void;
+  useGroundedSamSeg: boolean;
+  setUseGroundedSamSeg: (v: boolean) => void;
+  groundedSamThreshold: number;
+  setGroundedSamThreshold: (v: number) => void;
+  groundedSamMaskThreshold: number;
+  setGroundedSamMaskThreshold: (v: number) => void;
+  groundedSamText: string;
+  setGroundedSamText: (v: string) => void;
 
   // Upload State
   inputMode: "image" | "video";
@@ -41,6 +35,8 @@ interface AppState {
   setFilterMode: (mode: FilterMode) => void;
   nmsIou: number;
   setNmsIou: (iou: number) => void;
+  boxCategoryFilter: string[];
+  setBoxCategoryFilter: (categories: string[]) => void;
 
   // Yolo Validation State
   validateModelSource: "trained" | "upload";
@@ -73,20 +69,14 @@ export const useAppStore = create<AppState>((set) => ({
   // Model Config
   appMode: "annotate",
   setAppMode: (mode) => set({ appMode: mode }),
-  useSam2: false,
-  setUseSam2: (useSam2) => set({ useSam2 }),
-  useSam3: false,
-  setUseSam3: (useSam3) => set({ useSam3 }),
-  useSam3Seg: true,
-  setUseSam3Seg: (useSam3Seg) => set({ useSam3Seg }),
-  sam3Threshold: 0.5,
-  setSam3Threshold: (sam3Threshold) => set({ sam3Threshold }),
-  sam3MaskThreshold: 0.5,
-  setSam3MaskThreshold: (sam3MaskThreshold) => set({ sam3MaskThreshold }),
-  sam2ScoreThreshold: 0.0,
-  setSam2ScoreThreshold: (sam2ScoreThreshold) => set({ sam2ScoreThreshold }),
-  sam3Text: "",
-  setSam3Text: (sam3Text) => set({ sam3Text }),
+  useGroundedSamSeg: true,
+  setUseGroundedSamSeg: (useGroundedSamSeg) => set({ useGroundedSamSeg }),
+  groundedSamThreshold: 0.5,
+  setGroundedSamThreshold: (groundedSamThreshold) => set({ groundedSamThreshold }),
+  groundedSamMaskThreshold: 0.5,
+  setGroundedSamMaskThreshold: (groundedSamMaskThreshold) => set({ groundedSamMaskThreshold }),
+  groundedSamText: "",
+  setGroundedSamText: (groundedSamText) => set({ groundedSamText }),
 
   // Upload State
   inputMode: "image",
@@ -112,6 +102,8 @@ export const useAppStore = create<AppState>((set) => ({
   setFilterMode: (filterMode) => set({ filterMode }),
   nmsIou: 0.5,
   setNmsIou: (nmsIou) => set({ nmsIou }),
+  boxCategoryFilter: [],
+  setBoxCategoryFilter: (boxCategoryFilter) => set({ boxCategoryFilter }),
 
   // Yolo Validation State
   validateModelSource: "trained",

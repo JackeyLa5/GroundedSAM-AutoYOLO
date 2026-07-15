@@ -57,7 +57,7 @@ classDiagram
 
 ## 修改文件
 
-### [NEW] [gpu_memory.py](file:///Users/somnusochi/Documents/coding/locate-anything/backend/app/core/gpu_memory.py)
+### [NEW] [gpu_memory.py](file:///Users/somnusochi/Documents/coding/autoyolo/backend/app/core/gpu_memory.py)
 
 ```python
 """GPU memory management — Strategy Pattern."""
@@ -161,12 +161,11 @@ def create_memory_manager(device: str) -> GPUMemoryManager:
 
 ---
 
-### [MODIFY] [locate_anything.py](file:///Users/somnusochi/Documents/coding/locate-anything/backend/app/services/locate_anything.py)
+### [MODIFY] `grounded_sam2_server.py`
 
-- 删除 `_resolve_attn_impl()` 函数
-- 删除 `_resolve_max_long_side()` 函数
-- 导入并使用 `create_memory_manager`
-- 将所有 8 处 if/elif GPU 分支替换为 `gpu_mem.empty_cache()` 或 `gpu_mem.full_cleanup()`
+- Grounded-SAM 服务内部统一使用 `create_memory_manager`
+- GroundingDINO 检测和 SAM2 mask 提取共享同一设备管理策略
+- 清理逻辑统一为 `gpu_mem.empty_cache()` / `gpu_mem.full_cleanup()`
 
 替换前后对比：
 ```diff
@@ -178,12 +177,6 @@ def create_memory_manager(device: str) -> GPUMemoryManager:
 -    torch.mps.empty_cache()
 +gpu_mem.full_cleanup()
 ```
-
----
-
-### [MODIFY] [sam2_service.py](file:///Users/somnusochi/Documents/coding/locate-anything/backend/app/services/sam2_service.py)
-
-同样替换所有 GPU 分支为 `gpu_mem.empty_cache()` / `gpu_mem.full_cleanup()`。
 
 ---
 

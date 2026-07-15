@@ -1,4 +1,4 @@
-import { Select, InputNumber, Dropdown } from "antd";
+import { Select, InputNumber, Dropdown, Modal } from "antd";
 import { useAppStore } from "@/store/useAppStore";
 import { JobHistoryList } from "@/components/Training/JobHistoryList";
 
@@ -105,37 +105,75 @@ export function TrainingPanel({ detections, total, hasNextPage, isFetchingNextPa
     }
   };
 
+  const splitSelectedByTargetCount = () => {
+    const selectedDetections = detections.filter((d) => selected.has(d.id));
+    return {
+      zero: selectedDetections.filter((d) => d.boxes.length === 0),
+      positive: selectedDetections.filter((d) => d.boxes.length > 0),
+    };
+  };
+
+  const confirmSkipZeroTargets = (
+    action: (positiveIds: string[]) => void,
+    actionLabel: "train" | "export",
+  ) => {
+    const { zero, positive } = splitSelectedByTargetCount();
+    if (positive.length === 0) {
+      toast.error(t("trainingPanel.noPositiveTargets"));
+      return;
+    }
+    if (zero.length === 0) {
+      action(positive.map((d) => d.id));
+      return;
+    }
+    Modal.confirm({
+      title: t("trainingPanel.zeroTargetWarningTitle"),
+      content: t("trainingPanel.zeroTargetWarningMessage", {
+        count: zero.length,
+        action: t(`trainingPanel.zeroTargetAction.${actionLabel}`),
+      }),
+      okText: t("trainingPanel.ignoreAndContinue"),
+      cancelText: t("common.cancel"),
+      okButtonProps: { danger: true },
+      onOk: () => action(positive.map((d) => d.id)),
+    });
+  };
+
   const handleTrain = () => {
     if (selected.size === 0) {
       toast.error(t("trainingPanel.selectRecordRequired"));
       return;
     }
-    setIsTraining(true);
-    const p = splitPresets[splitPreset] ?? { train: 0.7, val: 0.2 };
-    trainMut.mutate({
-      detectionIds: [...selected],
-      modelVariant: currentVariant,
-      epochs,
-      imgsz,
-      batch,
-      trainRatio: p.train,
-      valRatio: p.val,
-      taskType,
-    });
+    confirmSkipZeroTargets((positiveIds) => {
+      setIsTraining(true);
+      const p = splitPresets[splitPreset] ?? { train: 0.7, val: 0.2 };
+      trainMut.mutate({
+        detectionIds: positiveIds,
+        modelVariant: currentVariant,
+        epochs,
+        imgsz,
+        batch,
+        trainRatio: p.train,
+        valRatio: p.val,
+        taskType,
+      });
+    }, "train");
   };
 
-  const handleDownloadDataset = async (format: string, label: string) => {
+  const handleDownloadDataset = (format: string, label: string) => {
     if (selectedCount === 0) {
       toast.error(t("trainingPanel.selectRecordRequired"));
       return;
     }
-    try {
-      const blob = await exportBatch([...selected], format);
-      downloadBlob(blob, `${label}_dataset.zip`);
-      toast.success(t("trainingPanel.datasetDownloaded"));
-    } catch {
-      toast.error(t("trainingPanel.datasetDownloadFailed"));
-    }
+    confirmSkipZeroTargets(async (positiveIds) => {
+      try {
+        const blob = await exportBatch(positiveIds, format);
+        downloadBlob(blob, `${label}_dataset.zip`);
+        toast.success(t("trainingPanel.datasetDownloaded"));
+      } catch {
+        toast.error(t("trainingPanel.datasetDownloadFailed"));
+      }
+    }, "export");
   };
 
   // Tag filter for training candidates

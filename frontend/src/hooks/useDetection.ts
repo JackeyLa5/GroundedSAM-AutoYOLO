@@ -1,3 +1,5 @@
+import { deleteDetection, deleteDetectionsBatch } from "@/services/api";
+
 export function useDetectionListInfiniteQuery() {
   return useInfiniteQuery({
     queryKey: ["detections"],
@@ -20,47 +22,41 @@ export function useDetectMutation() {
     mutationFn: ({
       file,
       categories,
-      useSam2,
-      sam2ScoreThreshold,
-      useSam3,
-      sam3Text,
-      useSam3Seg,
-      sam3Threshold,
-      sam3MaskThreshold,
+      groundedSamText,
+      useGroundedSamSeg,
+      groundedSamThreshold,
+      groundedSamMaskThreshold,
+      replaceDetectionId,
       signal,
     }: {
       file: File;
       categories: string[];
-      useSam2?: boolean;
-      sam2ScoreThreshold?: number;
-      useSam3?: boolean;
-      sam3Text?: string;
-      useSam3Seg?: boolean;
-      sam3Threshold?: number;
-      sam3MaskThreshold?: number;
+      groundedSamText?: string;
+      useGroundedSamSeg?: boolean;
+      groundedSamThreshold?: number;
+      groundedSamMaskThreshold?: number;
+      replaceDetectionId?: string;
       signal?: AbortSignal;
     }) =>
       detectImage(
         file,
         categories,
-        useSam2,
-        sam2ScoreThreshold,
-        useSam3,
-        sam3Text,
-        useSam3Seg,
-        sam3Threshold,
-        sam3MaskThreshold,
+        groundedSamText,
+        useGroundedSamSeg,
+        groundedSamThreshold,
+        groundedSamMaskThreshold,
+        replaceDetectionId,
         signal,
       ),
-    onMutate: ({ useSam2 }) => {
+    onMutate: () => {
       qc.invalidateQueries({ queryKey: ["model-status"] });
-      if (useSam2) qc.invalidateQueries({ queryKey: ["sam2-status"] });
+      qc.invalidateQueries({ queryKey: ["grounded-sam-status"] });
     },
-    onSuccess: (data, { useSam2 }) => {
+    onSuccess: (data) => {
       toast.success(t("detection.detectSuccess", { count: data.boxes.length }));
       qc.invalidateQueries({ queryKey: ["detections"] });
       qc.invalidateQueries({ queryKey: ["model-status"] });
-      if (useSam2) qc.invalidateQueries({ queryKey: ["sam2-status"] });
+      qc.invalidateQueries({ queryKey: ["grounded-sam-status"] });
     },
     onError: (err: Error) => toast.error(err.message || t("detection.detectFailed")),
   });
@@ -73,6 +69,19 @@ export function useDeleteDetectionMutation() {
     mutationFn: (id: string) => deleteDetection(id),
     onSuccess: () => {
       toast.success(t("historyList.deleteSuccess"));
+      qc.invalidateQueries({ queryKey: ["detections"] });
+    },
+    onError: () => toast.error(t("historyList.deleteFailed")),
+  });
+}
+
+export function useDeleteDetectionsBatchMutation() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => deleteDetectionsBatch(ids),
+    onSuccess: (data) => {
+      toast.success(t("historyList.batchDeleteSuccess", { count: data.deleted }));
       qc.invalidateQueries({ queryKey: ["detections"] });
     },
     onError: () => toast.error(t("historyList.deleteFailed")),

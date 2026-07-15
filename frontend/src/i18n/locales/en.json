@@ -1,6 +1,6 @@
 {
   "common": {
-    "annotate": "VLM Annotate",
+    "annotate": "Auto Annotate",
     "validate": "YOLO Validate",
     "image": "Image",
     "video": "Video",
@@ -41,14 +41,15 @@
     "placeholderVideoRunning": "Video inference in progress. Adjust Conf/IoU and click \"Validate Video\" to run again.",
     "placeholderDefault": "Upload image/video and enter target categories, then click \"Start Detection\"",
     "yoloValidation": "YOLO Validation",
-    "useSam2": "Enable SAM2 Segmentation",
-    "useSam3Seg": "Enable SAM3 Segmentation"
+    "useGroundedSamSeg": "Enable Grounded-SAM segmentation"
   },
   "filter": {
     "filterMode": "Filter Mode",
     "best": "Best",
     "nms": "NMS",
     "all": "All",
+    "categoryFilter": "Category Filter",
+    "clearCategoryFilter": "Clear",
     "nmsIou": "IoU",
     "fewerBoxes": "Fewer Boxes",
     "moreBoxes": "More Boxes"
@@ -154,6 +155,12 @@
     "deleteConfirm": "Are you sure you want to delete this record?",
     "deleteSuccess": "Record deleted successfully",
     "deleteFailed": "Failed to delete record",
+    "batchDelete": "Delete {{count}} selected",
+    "batchDeleteConfirm": "Delete {{count}} selected records?",
+    "batchDeleteSuccess": "Deleted {{count}} records",
+    "selectVisible": "Select visible",
+    "showSelected": "Show {{count}} selected",
+    "clearSelection": "Clear selection",
     "selectedTags": "{{count}} tags selected",
     "filterByTag": "Filter by Tag",
     "noMatch": "No match",
@@ -170,10 +177,13 @@
     "timeElapsed": "Time elapsed",
     "saveFilter": "Save filter results",
     "redetect": "Re-detect",
+    "redetectCurrent": "Re-detect current",
+    "redetectAll": "Re-detect all",
     "exportLabel": "Export Labels",
     "exportAllDataset": "Export All Datasets ({{count}})",
     "exportDataset": "Export Dataset",
     "loadingModel": "Loading model...",
+    "samMasking": "SAM segmenting...",
     "detecting": "Detecting...",
     "pleaseWait": "Please wait"
   },
@@ -184,7 +194,10 @@
     "showBox": "Show box",
     "hideBox": "Hide box",
     "deleteBox": "Delete this bounding box",
-    "deleteBoxConfirm": "Delete this bounding box?"
+    "deleteBoxConfirm": "Delete this bounding box?",
+    "selectedBoxes": "{{count}} selected",
+    "deleteSelectedBoxes": "Delete selected ({{count}})",
+    "deleteSelectedBoxesConfirm": "Delete {{count}} selected bounding boxes?"
   },
   "trainingPanel": {
     "variant": "Model Variant",
@@ -213,6 +226,14 @@
     "addToQueue": "Add to training queue ({{count}})",
     "trainingInProgress": "Training in progress, detection is unavailable",
     "selectRecordRequired": "Please select at least one detection record",
+    "noPositiveTargets": "No selected records contain targets. Re-detect these images first.",
+    "zeroTargetWarningTitle": "Zero-target images found",
+    "zeroTargetWarningMessage": "{{count}} selected images have zero detected targets. They will never be included in {{action}}. Cancel to continue detecting/adding labels, or ignore them and continue.",
+    "zeroTargetAction": {
+      "train": "training",
+      "export": "export"
+    },
+    "ignoreAndContinue": "Ignore and continue",
     "selectedCountTotal": "Selected {{current}}{{filtered}} / {{total}} records",
     "selectAll": "Select All",
     "deselectAll": "Deselect All",
@@ -297,24 +318,16 @@
     "cancel": "Cancel Batch"
   },
   "modelStatus": {
-    "loaded": "VLM Model Loaded",
-    "unloaded": "VLM Model Unloaded",
     "download": "Downloading Model",
     "downloading": "Downloading Model...",
     "loading": "Loading to GPU...",
     "error": "Model Error",
     "unload": "Unload",
     "unloading": "Unloading...",
-    "unloadSuccess": "VLM model unloaded",
-    "unloadFailed": "Failed to unload model",
-    "sam2Loaded": "SAM2 Model Loaded",
-    "sam2Unloaded": "SAM2 Model Unloaded",
-    "sam3Loaded": "SAM3 Model Loaded",
-    "sam3Unloaded": "SAM3 Model Unloaded",
-    "sam2UnloadSuccess": "SAM2 model unloaded",
-    "sam2UnloadFailed": "Failed to unload SAM2",
-    "sam3UnloadSuccess": "SAM3 model unloaded",
-    "sam3UnloadFailed": "Failed to unload SAM3",
+    "groundedSamLoaded": "Grounded-SAM Model Loaded",
+    "groundedSamUnloaded": "Grounded-SAM Model Unloaded",
+    "groundedSamUnloadSuccess": "Grounded-SAM model unloaded",
+    "groundedSamUnloadFailed": "Failed to unload Grounded-SAM",
     "preparing": "Preparing...",
     "stageStarting": "Starting...",
     "stageTokenizer": "Tokenizer...",

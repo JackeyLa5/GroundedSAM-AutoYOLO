@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.services.trainer import _build_dataset
+from app.services.trainer import _build_dataset, _write_data_yaml
 
 
 class FakeBox:
@@ -158,6 +158,14 @@ def test_build_dataset_class_map(tmp_path, work_dir):
     total, class_map, _, _, _ = _build_dataset(ids, db, work_dir, train_ratio=0.8, val_ratio=0.2)
     assert set(class_map.keys()) == {"cat", "dog", "bird"}
     assert set(class_map.values()) == {0, 1, 2}
+
+
+def test_write_data_yaml_keeps_unicode_names(work_dir):
+    """Chinese class names should stay readable in data.yaml."""
+    yaml_path = _write_data_yaml(work_dir, {"瓶子": 0})
+    content = yaml_path.read_text(encoding="utf-8")
+    assert "瓶子" in content
+    assert "\\u74f6\\u5b50" not in content
 
 
 def test_build_dataset_two_samples(tmp_path, work_dir):

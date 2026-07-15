@@ -9,8 +9,17 @@ import type { FilterMode } from "@/lib/filterBoxes";
 import { batchFileMap } from "@/lib/cache";
 
 export function useDetectionHistory() {
-  const { setPreviewUrl, setCategories, setFilterMode, setNmsIou, setHiddenIndices, setResult, setFiles, setBatchResults } =
-    useAppStore();
+  const {
+    setPreviewUrl,
+    setCategories,
+    setFilterMode,
+    setNmsIou,
+    setBoxCategoryFilter,
+    setHiddenIndices,
+    setResult,
+    setFiles,
+    setBatchResults,
+  } = useAppStore();
 
   const historyQuery = useDetectionListInfiniteQuery();
   const allItems = historyQuery.data?.pages.flatMap((p) => p.items) ?? [];
@@ -30,6 +39,7 @@ export function useDetectionHistory() {
         setPreviewUrl(`${API_BASE}/detections/${det.id}/image`);
         setCategories(parseCategories(full.categories));
         setFilterMode((full.filterMode as FilterMode) || "all");
+        setBoxCategoryFilter([]);
         if (full.filterNmsIou != null) setNmsIou(full.filterNmsIou);
         setHiddenIndices(new Set());
       } catch (e) {
@@ -43,6 +53,40 @@ export function useDetectionHistory() {
       setCategories,
       setFilterMode,
       setNmsIou,
+      setBoxCategoryFilter,
+      setHiddenIndices,
+      setResult,
+    ],
+  );
+
+  const handleShowHistoryBatch = useCallback(
+    async (ids: string[]) => {
+      if (ids.length === 0) return;
+      setFiles([]);
+      batchFileMap.clear();
+      try {
+        const results = await Promise.all(ids.map((id) => getDetection(id)));
+        const first = results[0];
+        setBatchResults(results);
+        setResult(first);
+        setPreviewUrl(`${API_BASE}/detections/${first.id}/image`);
+        setCategories(parseCategories(first.categories));
+        setFilterMode((first.filterMode as FilterMode) || "all");
+        setBoxCategoryFilter([]);
+        if (first.filterNmsIou != null) setNmsIou(first.filterNmsIou);
+        setHiddenIndices(new Set());
+      } catch (e) {
+        console.error("Failed to load history batch:", e);
+      }
+    },
+    [
+      setBatchResults,
+      setFiles,
+      setPreviewUrl,
+      setCategories,
+      setFilterMode,
+      setNmsIou,
+      setBoxCategoryFilter,
       setHiddenIndices,
       setResult,
     ],
@@ -54,5 +98,6 @@ export function useDetectionHistory() {
     total,
     recentCategories,
     handleSelectHistory,
+    handleShowHistoryBatch,
   };
 }

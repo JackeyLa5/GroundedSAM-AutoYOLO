@@ -2,29 +2,15 @@
 
 from app.services.detection_strategy import (
     DetectionResult,
-    SAM3Detection,
-    VLMDetection,
-    VLMWithSAM2,
+    GroundedSamDetection,
     create_strategy,
 )
 
 
 class TestCreateStrategy:
-    def test_default_strategy_is_vlm(self):
+    def test_default_strategy_is_grounded_sam(self):
         s = create_strategy()
-        assert isinstance(s, VLMDetection)
-
-    def test_use_sam2_returns_vlm_with_sam2(self):
-        s = create_strategy(use_sam2=True)
-        assert isinstance(s, VLMWithSAM2)
-
-    def test_use_sam3_returns_sam3(self):
-        s = create_strategy(use_sam3=True)
-        assert isinstance(s, SAM3Detection)
-
-    def test_sam3_takes_priority_over_sam2(self):
-        s = create_strategy(use_sam2=True, use_sam3=True)
-        assert isinstance(s, SAM3Detection)
+        assert isinstance(s, GroundedSamDetection)
 
 
 class TestDetectionResult:
@@ -46,10 +32,6 @@ class TestDetectionResult:
 
 
 class TestStrategyKwargs:
-    def test_sam3_strategy_accepts_use_sam3_seg(self):
-        s = SAM3Detection(lambda *a, **kw: [])
-        assert s is not None  # SAM3 requires running server, skip actual detect
-
-    def test_vlm_strategy_has_detect_method(self):
-        s = VLMDetection(lambda *a, **kw: {})
-        assert hasattr(s, "detect")
+    def test_grounded_sam_strategy_accepts_segmentation_flag(self):
+        s = GroundedSamDetection(lambda *a, **kw: [])
+        assert s is not None  # Grounded-SAM requires running server, skip actual detect

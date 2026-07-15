@@ -21,17 +21,12 @@ export function DetectionControls({
     categories,
     setCategories,
     isTraining,
-    useSam2,
-    setUseSam2,
-    useSam3,
-    useSam3Seg,
-    setUseSam3Seg,
-    sam3Threshold,
-    setSam3Threshold,
-    sam3MaskThreshold,
-    setSam3MaskThreshold,
-    sam2ScoreThreshold,
-    setSam2ScoreThreshold,
+    useGroundedSamSeg,
+    setUseGroundedSamSeg,
+    groundedSamThreshold,
+    setGroundedSamThreshold,
+    groundedSamMaskThreshold,
+    setGroundedSamMaskThreshold,
   } = useAppStore();
 
   return (
@@ -46,56 +41,32 @@ export function DetectionControls({
         />
       </div>
 
-      {appMode === "annotate" && !useSam3 && (
+      {appMode === "annotate" && (
         <>
           <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
             <input
               type="checkbox"
-              checked={useSam2}
-              onChange={(e) => setUseSam2(e.target.checked)}
+              checked={useGroundedSamSeg}
+              onChange={(e) => setUseGroundedSamSeg(e.target.checked)}
               className="h-3.5 w-3.5 rounded border-gray-300 text-primary-600"
             />
-            {t("home.useSam2")}
-          </label>
-          {useSam2 && (
-            <div className="flex items-center gap-2 text-xs text-gray-500">
-              <span className="flex-shrink-0">{`Score ≥ ${sam2ScoreThreshold.toFixed(1)}`}</span>
-              <input
-                type="range" min="0" max="1" step="0.1"
-                value={sam2ScoreThreshold}
-                onChange={(e) => setSam2ScoreThreshold(parseFloat(e.target.value))}
-                className="flex-1 h-1 accent-primary-600 cursor-pointer"
-              />
-            </div>
-          )}
-        </>
-      )}
-      {appMode === "annotate" && useSam3 && (
-        <>
-          <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useSam3Seg}
-              onChange={(e) => setUseSam3Seg(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-gray-300 text-primary-600"
-            />
-            {t("home.useSam3Seg")}
+            {t("home.useGroundedSamSeg")}
           </label>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="flex-shrink-0">{`Conf ≥ ${sam3Threshold.toFixed(1)}`}</span>
+            <span className="flex-shrink-0">{`Conf ≥ ${groundedSamThreshold.toFixed(1)}`}</span>
             <input
               type="range" min="0" max="1" step="0.05"
-              value={sam3Threshold}
-              onChange={(e) => setSam3Threshold(parseFloat(e.target.value))}
+              value={groundedSamThreshold}
+              onChange={(e) => setGroundedSamThreshold(parseFloat(e.target.value))}
               className="flex-1 h-1 accent-primary-600 cursor-pointer"
             />
           </div>
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="flex-shrink-0">{`Mask ≥ ${sam3MaskThreshold.toFixed(1)}`}</span>
+            <span className="flex-shrink-0">{`Mask ≥ ${groundedSamMaskThreshold.toFixed(1)}`}</span>
             <input
               type="range" min="0" max="1" step="0.05"
-              value={sam3MaskThreshold}
-              onChange={(e) => setSam3MaskThreshold(parseFloat(e.target.value))}
+              value={groundedSamMaskThreshold}
+              onChange={(e) => setGroundedSamMaskThreshold(parseFloat(e.target.value))}
               className="flex-1 h-1 accent-primary-600 cursor-pointer"
             />
           </div>

@@ -5,15 +5,11 @@
 ## 1. 启动项目
 
 ```bash
-# macOS / Linux
-./start.sh
-
-# Windows
-start.bat
+docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 启动后访问：
-- **前端界面**：http://localhost:5173
+- **前端界面**：http://localhost
 - **API 文档**：http://localhost:8000/docs
 
 ## 2. 上传图片或视频
@@ -34,21 +30,17 @@ start.bat
 
 ## 3. 选择检测模型
 
-在侧边栏顶部有模型选择器，可在两种模式间切换：
+自动标注使用 Grounded-SAM：
 
-### VLM + SAM2（默认）
-- VLM（LocateAnything-3B）生成边界框
-- 可选启用 SAM2 分割生成精确 mask
-- 适合需要高精度 mask 的场景
-
-### SAM3
-- 文本驱动的端到端检测+分割，一次调用完成
+### Grounded-SAM
+- GroundingDINO 根据文本提示生成检测框
+- SAM2 为检测实例生成精确 mask
 - 支持开放词汇提示（如 `cat`、`red car`）
 - 可调参数：
   - **置信度阈值**（Conf ≥ 0.5）：控制检测灵敏度，越低检测越多
   - **Mask 阈值**（Mask ≥ 0.5）：控制 mask 紧致度
-  - **启用 SAM3 分割**：关闭可跳过 mask 提取，仅返回检测框
-- 首次使用需设置 `HF_TOKEN` 环境变量，模型下载后缓存在本地
+  - **启用分割**：关闭可跳过 mask 提取，仅返回检测框
+- 首次使用时下载模型，模型缓存在本地 Hugging Face 缓存目录
 
 ## 4. 自动标注
 
@@ -56,10 +48,10 @@ start.bat
    - 示例：`person, car, dog`
    - 支持自然语言描述：`red car`, `person wearing hat`
 2. 点击「开始检测」
-3. 模型自动生成边界框标注
+3. Grounded-SAM 自动生成边界框标注和可选 mask
    - 第一张结果立即可见
    - 批量上传时后续结果实时追加
-   - 检测记录标注模型类型（VLM / VLM+SAM2 / SAM3）
+   - 检测记录标注模型类型（Grounded-SAM）
 
 **提示**：
 - 类别名称越具体，检测效果越好
@@ -68,7 +60,7 @@ start.bat
 
 ## 5. 人工修正
 
-VLM 标注可能不完美，需要人工调整：
+Grounded-SAM 标注可能不完美，需要人工调整：
 
 ### 查看模式
 - **全部**：显示所有检测框
@@ -112,7 +104,6 @@ dataset/
 
 1. 在「YOLO 训练」面板选择要训练的检测记录
 2. 选择 YOLO 系列：
-   - **YOLOv5**：经典稳定，兼容性好
    - **YOLOv8**：平衡速度与精度
    - **YOLOv11**：最新架构，性能最佳
    - **YOLOv26**：实验性，最前沿
@@ -161,7 +152,7 @@ dataset/
 
 ## 常见问题
 
-**Q: VLM 检测不到目标？**
+**Q: Grounded-SAM 检测不到目标？**
 A: 尝试更具体的类别描述，或检查图片质量
 
 **Q: 训练时显存不足？**

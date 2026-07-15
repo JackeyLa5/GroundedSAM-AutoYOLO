@@ -40,7 +40,10 @@ def download_batch_yolo(
     db: Session = Depends(get_db),
 ) -> Response:
     fmt = body.format or "yolo"
-    data = export_batch(db, body.detection_ids, format=fmt)
+    try:
+        data = export_batch(db, body.detection_ids, format=fmt)
+    except ValueError as exc:
+        raise HTTPException(400, detail=str(exc)) from exc
     label = FORMAT_LABELS.get(fmt, fmt)
     return Response(
         content=data,

@@ -3,28 +3,25 @@
 export async function detectImage(
   file: File,
   categories: string[],
-  useSam2?: boolean,
-  sam2ScoreThreshold?: number,
-  useSam3?: boolean,
-  sam3Text?: string,
-  useSam3Seg?: boolean,
-  sam3Threshold?: number,
-  sam3MaskThreshold?: number,
+  groundedSamText?: string,
+  useGroundedSamSeg?: boolean,
+  groundedSamThreshold?: number,
+  groundedSamMaskThreshold?: number,
+  replaceDetectionId?: string,
   signal?: AbortSignal,
 ): Promise<DetectResponse> {
   const form = new FormData();
   form.append("file", file);
   form.append("categories", JSON.stringify(categories));
-  if (useSam3) {
-    form.append("use_sam3", "true");
-    if (sam3Text) form.append("sam3_text", sam3Text);
-    if (useSam3Seg === false) form.append("use_sam3_seg", "false");
-    if (sam3Threshold != null) form.append("sam3_threshold", String(sam3Threshold));
-    if (sam3MaskThreshold != null) form.append("sam3_mask_threshold", String(sam3MaskThreshold));
-  } else if (useSam2) {
-    form.append("use_sam2", "true");
-    if (sam2ScoreThreshold != null) form.append("sam2_score_threshold", String(sam2ScoreThreshold));
+  if (groundedSamText) form.append("grounded_sam_text", groundedSamText);
+  if (useGroundedSamSeg === false) form.append("use_grounded_sam_seg", "false");
+  if (groundedSamThreshold != null) {
+    form.append("grounded_sam_threshold", String(groundedSamThreshold));
   }
+  if (groundedSamMaskThreshold != null) {
+    form.append("grounded_sam_mask_threshold", String(groundedSamMaskThreshold));
+  }
+  if (replaceDetectionId) form.append("replace_detection_id", replaceDetectionId);
   const { data } = await request.post<{ data: DetectResponse }>("/detect", form, {
     signal,
     timeout: DETECT_TIMEOUT,
@@ -51,6 +48,13 @@ export async function deleteDetection(id: string): Promise<void> {
   await request.post(`/detections/${id}/delete`);
 }
 
+export async function deleteDetectionsBatch(ids: string[]): Promise<{ deleted: number }> {
+  const { data } = await request.post<{ data: { deleted: number } }>("/detections/delete-batch", {
+    detectionIds: ids,
+  });
+  return data.data;
+}
+
 export async function deleteBox(detectionId: string, boxId: string): Promise<void> {
   await request.post(`/detections/${detectionId}/boxes/${boxId}/delete`);
 }
@@ -58,8 +62,9 @@ export async function deleteBox(detectionId: string, boxId: string): Promise<voi
 export async function addBox(
   detectionId: string,
   box: { className: string; x1: number; y1: number; x2: number; y2: number },
-): Promise<void> {
-  await request.post(`/detections/${detectionId}/boxes`, box);
+): Promise<BBox> {
+  const { data } = await request.post<{ data: BBox }>(`/detections/${detectionId}/boxes`, box);
+  return data.data;
 }
 
 export function exportSingleUrl(id: string): string {
@@ -225,32 +230,14 @@ export interface ModelStatus {
   error: string;
 }
 
-export async function getModelStatus(): Promise<ModelStatus> {
-  const { data } = await request.get<{ data: ModelStatus }>("/model/status");
-  return data.data;
-}
-
-export async function unloadModel(): Promise<void> {
-  await request.post("/model/unload");
-}
-
-export async function getSam2Status(): Promise<ModelStatus> {
-  const { data } = await request.get<{ data: ModelStatus }>("/model/sam2/status");
-  return data.data;
-}
-
-export async function unloadSam2(): Promise<void> {
-  await request.post("/model/sam2/unload");
-}
-
-export interface Sam3Status {
+export interface GroundedSamStatus {
   loaded: boolean;
   status: string; // "starting" | "loading" | "loaded" | "unloaded"
 }
 
-export async function checkSam3Health(): Promise<Sam3Status> {
+export async function checkGroundedSamHealth(): Promise<GroundedSamStatus> {
   try {
-    const resp = await request.get("/model/sam3/status");
+    const resp = await request.get("/model/grounded-sam/status");
     const inner = resp.data?.data;
     return {
       loaded: inner?.loaded === true,
@@ -261,8 +248,8 @@ export async function checkSam3Health(): Promise<Sam3Status> {
   }
 }
 
-export async function unloadSam3(): Promise<void> {
-  await request.post("/model/sam3/unload");
+export async function unloadGroundedSam(): Promise<void> {
+  await request.post("/model/grounded-sam/unload");
 }
 
 // ── Dataset Import ────────────────────────────────

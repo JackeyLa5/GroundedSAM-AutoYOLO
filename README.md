@@ -1,4 +1,4 @@
-# VLM-AutoYOLO
+# AutoYOLO
 
 [简体中文](README_ZH.md) | English
 
@@ -6,32 +6,37 @@
   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue.svg" alt="License">
   <img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python">
   <img src="https://img.shields.io/badge/Node.js-22+-green" alt="Node.js">
-  <img src="https://img.shields.io/badge/Platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey" alt="Platform">
-  <img src="https://img.shields.io/badge/GPU-MPS%20%7C%20CUDA-orange" alt="GPU">
-  <a href="mailto:somnusochi@gmail.com"><img src="https://img.shields.io/badge/Open_to_Work-🤝-brightgreen?style=flat" alt="Open to Work"></a>
-  <img src="https://img.shields.io/github/stars/Somnusochi/VLM-AutoYOLO?style=social" alt="Stars">
+  <img src="https://img.shields.io/badge/Platform-Ubuntu%20x86-lightgrey" alt="Platform">
+  <img src="https://img.shields.io/badge/GPU-NVIDIA%20CUDA-orange" alt="GPU">
+  <img src="https://img.shields.io/github/stars/JackeyLa5/GroundedSAM-AutoYOLO?style=social" alt="Stars">
 </p>
 
 ```
-🖼️ image/video → 🔍 VLM / SAM3 detection → 🎯 SAM2/SAM3 mask → ✏️ refine → 📦 export → 🚀 YOLO → ✅ model
+🖼️ image/video → 🔍 Grounded-SAM detection → 🎯 instance masks → ✏️ refine → 📦 export → 🚀 YOLO → ✅ model
 ```
 
-**Images or videos in → YOLO model out**, with VLM auto-labeling (LocateAnything-3B), SAM2.1 / SAM3 mask refinement, and human-in-the-loop correction. Multi-format export, one-click YOLO training (detect & segment), video keyframe extraction, and model validation — all GPU-accelerated on macOS MPS and Windows/Linux CUDA.
+**Images or videos in → YOLO model out**, with Grounded-SAM auto-labeling (GroundingDINO + SAM2) and human-in-the-loop correction. Multi-format export, one-click YOLO training (detect & segment), video keyframe extraction, and model validation are packaged for Ubuntu x86 + NVIDIA CUDA Docker deployment.
+
+This project is adapted from the original [VLM-AutoYOLO](https://github.com/Somnusochi/VLM-AutoYOLO) workflow. The main change is replacing the original VLM backend with Grounded-SAM / GroundingDINO + SAM2 to reduce GPU memory requirements while keeping the automatic YOLO dataset generation workflow.
 
 ![Architecture](docs/architecture_en.webp)
 
 > See [Architecture & Workflow Documentation](docs/architecture_diagram_en.md) for detailed Mermaid diagrams.
 
 ## Key Features
-- 🤖 **VLM auto-labeling**: Open-vocabulary object detection with LocateAnything-3B
-- 🎯 **SAM2 / SAM3 segmentation**: Bbox → pixel-precise mask with SAM 2.1 or SAM3 text-driven detection+segmentation in one pass, BBox/Mask toggle on canvas
+- 🤖 **Grounded-SAM auto-labeling**: Open-vocabulary text detection with GroundingDINO followed by SAM2 instance segmentation
+- 🎯 **Instance segmentation**: Bbox and pixel-precise mask output in one Grounded-SAM workflow, with independent BBox/Mask canvas toggles
 - 🎥 **Video annotation**: Intelligent keyframe extraction (scene / motion / interval), SSIM dedup
 - ✏️ **Manual refinement**: Canvas draw mode, NMS filtering, hide/show individual boxes
 - 📦 **Multi-format export/import**: YOLO, YOLO-Seg, COCO JSON, Pascal VOC XML, CreateML JSON — import datasets via chunked ZIP upload (max 10GB, resume support)
 - 🚀 **Training queue**: Sequential job processing with cancel support, one-click training (YOLOv8 / v11 / v26) with real-time SSE progress
 - ✅ **Model validation**: Batch image / video testing, MJPEG live stream, SSE video inference
-- 💾 **Smart model management**: Lazy loading, idle auto-unload, MPS/CUDA strategy pattern cleanup
+- 💾 **Smart model management**: Lazy loading, idle auto-unload, CUDA memory cleanup
 - 🌐 **i18n**: English / 简体中文 / 日本語 · 🎨 **Theme**: Light / dark mode
+
+## Built for Vision Data Pipelines
+
+AutoYOLO is designed to close the loop for vision datasets: collect images from a camera or video source, auto-label them with Grounded-SAM, review/correct the results in the browser, and train a YOLO detection or segmentation model — all without leaving the app.
 
 ## Documentation
 
@@ -41,9 +46,9 @@ Comprehensive guides: quick start, annotation best practices, training parameter
 
 ## Screenshots
 
-| VLM Pre-annotation & Refinement | YOLO Training |
+| Grounded-SAM Annotation & Refinement | YOLO Training |
 |--------------------------------|---------------|
-| ![VLM pre-annotation and refinement](docs/1.webp) | ![YOLO training](docs/2.webp) |
+| ![Grounded-SAM annotation and refinement](docs/1.webp) | ![YOLO training](docs/2.webp) |
 
 | Video Keyframe Entry | Model Validation |
 |---------------------|-----------------|
@@ -53,12 +58,11 @@ Comprehensive guides: quick start, annotation best practices, training parameter
 
 | Layer | Technology |
 |-------|-----------|
-| Visual Grounding | NVIDIA LocateAnything-3B (Qwen2.5-3B + MoonViT) |
-| Segmentation | SAM 2.1 / SAM3 — Segment Anything Model 2 / 3 |
+| Detection and Segmentation | GroundingDINO + SAM2 (Grounded-SAM) |
 | Object Detection | YOLOv8 / v11 / v26 — Detect & Segment (Ultralytics) |
 | Backend | Python FastAPI + PostgreSQL + SSE |
 | Frontend | React + TypeScript + Vite + Tailwind CSS + antd |
-| GPU Memory | Strategy Pattern (`gpu_memory.py`) — CUDA expandable segments / MPS synchronize + empty_cache |
+| GPU Memory | CUDA expandable segments / empty_cache |
 | State | Zustand + TanStack Query + ahooks |
 | i18n | i18next (English / 简体中文 / 日本語) |
 | Video | ffmpeg (scene / motion / interval extraction) |
@@ -66,50 +70,23 @@ Comprehensive guides: quick start, annotation best practices, training parameter
 
 ## Quick Start
 
-### CLI (Recommended for macOS / Linux)
-
-```bash
-git clone https://github.com/Somnusochi/VLM-AutoYOLO.git
-cd VLM-AutoYOLO
-python3 cli.py all
-```
-
-The CLI handles everything: dependency checks, Python venv, pip install, pnpm install, database migrations, and launches both services. Open http://localhost:5173.
-
-**Commands:**
-```bash
-python3 cli.py all                       # Setup + download models + start
-python3 cli.py all --no-models           # Skip model download
-python3 cli.py all --models=vlm          # Only download VLM model
-python3 cli.py all --models=vlm,sam2     # Download VLM + SAM2
-python3 cli.py setup                     # Install deps + init DB
-python3 cli.py start                     # Launch services
-python3 cli.py stop                      # Stop services
-python3 cli.py status                    # Check if running
-python3 cli.py download --models=vlm     # Re-download specific model
-```
-
 ### Docker Deployment
 
-> **Requirements:** Linux or Windows (WSL2) with NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
-> **macOS is not supported** — Docker on Mac has no GPU passthrough. Use [Manual Setup](#manual-setup) instead.
+> **Requirements:** Ubuntu x86_64, NVIDIA GPU, [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html), Docker, and Node.js 22+ / pnpm.
 
-**Quick start with pre-built images:**
-
-```bash
-curl -O https://raw.githubusercontent.com/Somnusochi/VLM-AutoYOLO/master/docker-compose.yml
-docker compose up -d
-open http://localhost        # Frontend
-open http://localhost:8000/docs  # API docs
-```
-
-**Build from source:**
+Run this once:
 
 ```bash
-git clone https://github.com/Somnusochi/VLM-AutoYOLO.git
-cd VLM-AutoYOLO
-docker compose up -d --build
+git clone https://github.com/JackeyLa5/GroundedSAM-AutoYOLO.git && cd GroundedSAM-AutoYOLO && cd frontend && pnpm install && pnpm build && cd .. && docker compose -f docker/docker-compose.yml up -d --build db backend frontend
 ```
+
+Open:
+
+```bash
+http://localhost
+```
+
+If you change frontend code later, rerun the `cd frontend && pnpm install && pnpm build` part before restarting the stack.
 
 **Services:**
 
@@ -117,80 +94,24 @@ docker compose up -d --build
 |---------|------|-------------|
 | Frontend | 80 | React web UI (Nginx) |
 | Backend | 8000 | FastAPI server |
-| SAM3 | 8002 | SAM3 standalone inference service |
+| Grounded-SAM | 8002 | Grounded-SAM standalone inference service |
 | Database | 5432 | PostgreSQL |
 
-**GPU Support** — `docker-compose.yml` now has built-in GPU passthrough configured. No manual editing required.
+**GPU Support** — `docker/docker-compose.yml` includes NVIDIA GPU passthrough configuration and the backend image installs Grounded-SAM2 dependencies by default.
 
 **Persistent Storage (Docker volumes):**
-- `pgdata` — Database · `model-cache` — VLM model · `sam3-cache` — Hugging Face cache for SAM2/SAM3 · `uploads` — User images/videos · `training-data` — YOLO training outputs
+- `pgdata` — Database · `hf-cache` — Hugging Face cache for Grounded-SAM models · `uploads` — User images/videos · `training-data` — YOLO training outputs
 
 **Backup / Restore:**
 
 ```bash
-docker compose exec db pg_dump -U postgres autolabeling > backup.sql
-cat backup.sql | docker compose exec -T db psql -U postgres autolabeling
-```
-
-### Manual Setup
-
-**Requirements:**
-
-| Resource | Minimum | Recommended |
-|----------|---------|-------------|
-| Python | 3.12+ | 3.12+ |
-| Node.js | 22+ | 22+ |
-| PostgreSQL | 16+ | 16+ |
-| ffmpeg | Any | — |
-| macOS | Apple Silicon 16GB | 24GB+ |
-| NVIDIA GPU | 12GB VRAM | 16GB+ |
-
-**Setup:**
-
-```bash
-git clone https://github.com/Somnusochi/VLM-AutoYOLO.git
-cd VLM-AutoYOLO
-
-# Backend
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-cd ..
-
-# Frontend
-cd frontend
-pnpm install
-cd ..
-
-# Database (PostgreSQL recommended, but SQLite is supported out of the box)
-# If using PostgreSQL:
-# psql -d postgres -c "CREATE DATABASE autolabeling;"
-# cp backend/.env.example backend/.env
-# If you prefer a zero-setup SQLite database, just skip the two steps above. The system will auto-generate autolabeling.db
-
-# Migrations
-cd backend
-PYTHONPATH=. alembic upgrade head
-```
-
-**Pre-download models (optional):**
-
-```bash
-huggingface-cli download nvidia/LocateAnything-3B --local-dir backend/model
-python -c "from sam2.build_sam import build_sam2_hf; build_sam2_hf('facebook/sam2.1-hiera-base-plus', device='cpu')"
-```
-
-**Launch:**
-
-```bash
-./start.sh   # macOS / Linux
-start.bat    # Windows
+docker compose -f docker/docker-compose.yml exec db pg_dump -U postgres autolabeling > backup.sql
+cat backup.sql | docker compose -f docker/docker-compose.yml exec -T db psql -U postgres autolabeling
 ```
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost:5173 |
+| Frontend | http://localhost |
 | Backend | http://localhost:8000 |
 | API Docs | http://localhost:8000/docs |
 
@@ -200,44 +121,19 @@ Full directory tree: **[docs/STRUCTURE.md](docs/STRUCTURE.md)**
 
 ## Features
 
-### VLM Pre-annotation
+### Grounded-SAM Detection and Segmentation
 
-Upload images or video keyframes with open-vocabulary descriptions (e.g. `fire, smoke`, `red car`). LocateAnything-3B automatically detects and draws bounding boxes.
+Enter open-vocabulary categories (e.g. `cat`, `red car`). Grounded-SAM runs GroundingDINO text detection and SAM2 instance segmentation as one annotation workflow.
 
-- Open-vocabulary natural language descriptions
-- Auto-resize by long-side cap (VRAM-based: 800–1333px)
-- Batch upload folders or video keyframes, streaming results
-
-### SAM2 Segmentation
-
-Enable SAM2 (Segment Anything Model 2) to refine VLM bounding boxes into pixel-precise masks.
-
-- Check "Enable SAM2 Segmentation" before detection — runs automatically after VLM
-- SAM 2.1 model (base+), lazy-loaded with idle auto-unload
-- Score threshold slider for mask quality filtering
-- Masks rendered as semi-transparent overlays on canvas
-- BBox and Mask independently toggled on both main canvas and hover preview
-- Result table shows polygon vertex count per box
-
-### SAM3 Detection + Segmentation
-
-Switch to SAM3 mode for text-driven detection and segmentation in a single pass — no VLM required.
-
-- Toggle between VLM+SAM2 and SAM3 via the model selector in the sidebar
-- Enter open-vocabulary text prompts (e.g. `cat`, `red car`) — SAM3 detects and segments all matching instances
 - **Confidence threshold** slider (0.0–1.0, default 0.5) controls detection sensitivity
 - **Mask threshold** slider (0.0–1.0, default 0.5) controls mask tightness
 - Enable/disable segmentation independently — bbox-only mode skips mask extraction for faster results
-- SAM3 runs as a standalone HTTP service on port 8002 with its own venv (`backend/sam3-venv/`)
-- **Requires `HF_TOKEN`** — set this env var before starting the backend. Two steps:
-  1. Open [huggingface.co/facebook/sam3](https://huggingface.co/facebook/sam3) in browser, click **"Agree and access repository"**
-  2. Create a **Read** token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) (no need for Fine-grained — a plain Read token inherits your account's permissions)
-  Model cached in `~/.cache/huggingface/hub/` after first download
+- Grounded-SAM runs as a standalone HTTP service on port 8002 with its own venv (`backend/grounded-sam2-venv/`)
+- Uses public GroundingDINO + SAM2 defaults; model files are cached in `~/.cache/huggingface/hub/` after first download
 - Auto-starts on first use, idle auto-unload after 10 min
 - Real-time loading status via SSE (`starting` → `loading` → `loaded`)
 - Manual unload button to free GPU memory
-- Backend auto-switches: using SAM3 unloads VLM/SAM2, and vice versa
-- Detection records tagged with `model_type` (VLM / VLM+SAM2 / SAM3) for traceability
+- Detection records tagged with `model_type` for traceability
 
 ### Video Annotation
 
@@ -253,7 +149,7 @@ Upload a video, extract keyframes, select and batch-annotate.
 Canvas-based annotation with View / Draw modes.
 
 - Category quick-fill from history
-- VLM pre-annotation baseline → delete mistakes → draw missing boxes
+- Grounded-SAM pre-annotation baseline → delete mistakes → draw missing boxes
 - All / Best / NMS filter modes, settings saved per detection
 - Hide individual boxes while inspecting dense results
 - Per-frame re-detection
@@ -269,7 +165,7 @@ Canvas-based annotation with View / Draw modes.
 
 - **Series**: YOLOv8 / v11 / v26 (n/s/m/l/x)
 - **Task types**: Object Detection (Detect), Instance Segmentation (Segment)
-- Segmentation training auto-uses SAM2 polygon labels; falls back to bbox when unavailable
+- Segmentation training uses Grounded-SAM polygon labels and falls back to bbox when unavailable
 - Tag filter + thumbnail preview for precise data selection
 - Virtual scroll with "Load All" button for large datasets
 - Dataset split presets (70/20/10, 80/20, 90/10, 60/20/20)
@@ -290,22 +186,22 @@ Canvas-based annotation with View / Draw modes.
 
 ### Model Management
 
-- **Lazy loading**: VLM, SAM2, and SAM3 load on first use, unload after idle (default 10 min)
-- **Idle watchdog**: all three models auto-unload after `MODEL_IDLE_TIMEOUT_SECONDS` of inactivity
-- **Unified SSE status**: `GET /api/v1/model/events` streams VLM, SAM2, SAM3 status in one connection
-- **Manual unload**: each model has its own unload button and API endpoint
-- **GPU memory**: Strategy Pattern (`gpu_memory.py`) — CUDA `expandable_segments` / MPS `synchronize`+`empty_cache`+`gc`
+- **Lazy loading**: Grounded-SAM loads on first use and unloads after idle (default 10 min)
+- **Idle watchdog**: Grounded-SAM unloads after `MODEL_IDLE_TIMEOUT_SECONDS` of inactivity
+- **SSE status**: `GET /api/v1/model/events` streams the Grounded-SAM service state
+- **Manual unload**: the Grounded-SAM service has an unload endpoint
+- **GPU memory**: CUDA `expandable_segments` / `empty_cache`
 - **Transparent load errors**: model load/inference failures are returned to the UI instead of being hidden behind generic detection errors
 
-### Troubleshooting: Stuck at `Loading to GPU`
+### Troubleshooting: Stuck at `Loading`
 
-If the VLM model stays at `Loading to GPU`, the model files were already found and the failure is likely happening while PyTorch moves LocateAnything-3B onto CUDA/MPS. The UI now surfaces the backend error directly, so check the toast message or backend logs for the real cause, such as CUDA OOM, missing NVIDIA runtime, driver mismatch, or a dependency import error.
+If Grounded-SAM remains at `starting` or `loading`, inspect the service log and backend logs. Typical causes are CUDA OOM, missing NVIDIA runtime, driver mismatch, inaccessible model files, or a dependency import error.
 
 Useful Docker checks:
 
 ```bash
-docker compose logs backend --tail=200
-docker compose exec backend python - <<'PY'
+docker compose -f docker/docker-compose.yml logs backend --tail=200
+docker compose -f docker/docker-compose.yml exec backend python - <<'PY'
 import torch
 print("cuda:", torch.cuda.is_available())
 print("device:", torch.cuda.get_device_name(0) if torch.cuda.is_available() else None)
@@ -318,35 +214,19 @@ nvidia-smi
 
 Full API documentation with request/response examples: **[docs/API.md](docs/API.md)**
 
-## Cross-Platform
+## Runtime Platform
 
-| Platform | Inference | Training |
-|----------|-----------|----------|
-| macOS (Apple Silicon) | MPS | MPS |
-| Linux / Windows (NVIDIA) | CUDA | CUDA |
-
-Auto-detection: CUDA → MPS. Override via `DEVICE` env. **CPU not supported.**
-
-## Inference Benchmarks
-
-Tested locally on an **Apple MacBook Pro (M4 Pro, 24GB Unified Memory)** using Apple MPS hardware acceleration.
-
-| Image Resolution (Max Side) | Inference Latency | Actual Memory Footprint |
-| :--- | :--- | :--- |
-| **Thumbnail (256px)** | `~0.68s` | Stable around `~11.8GB` |
-| **High-Res (1024px)** | `~4.35s` | Stable around `~11.8GB` |
-
-Full detailed benchmarks across different hardware configurations: **[docs/BENCHMARKS.md](docs/BENCHMARKS.md)**
+The supported deployment target is Ubuntu x86_64 + NVIDIA CUDA + Docker. Grounded-SAM and YOLO training both run inside containers.
 
 ## Highlights
 
-- **MPS / CUDA full-pipeline GPU acceleration** — VLM, SAM2, and YOLO training all GPU-accelerated
-- **Strategy Pattern GPU memory** — `gpu_memory.py` centralizes CUDA / MPS cleanup; `expandable_segments:True`
-- **SAM2 / SAM3 mask refinement** — SAM2 refines VLM bboxes; SAM3 does text-driven detection+segmentation in one pass
+- **CUDA full-pipeline GPU acceleration** — Grounded-SAM and YOLO training use NVIDIA GPUs
+- **CUDA GPU memory management** — `expandable_segments:True`
+- **Grounded-SAM annotation** — GroundingDINO text detection and SAM2 instance segmentation in one workflow
 - **5 export formats** — YOLO, YOLO-Seg, COCO, Pascal VOC, CreateML
-- **Detect & Segment training** — polygon labels auto-used when SAM2 masks are available
-- **Cross-platform** — macOS MPS, Windows / Linux CUDA, unified codebase
-- **Unified SSE model status** — single EventSource for VLM, SAM2, SAM3 states; no polling
+- **Detect & Segment training** — polygon labels auto-used when Grounded-SAM masks are available
+- **Docker-only deployment** — targeted at Ubuntu x86_64 + NVIDIA CUDA
+- **Grounded-SAM SSE status** — a single EventSource reports service state without polling
 
 ## Development
 
@@ -362,17 +242,16 @@ python -m compileall app alembic
 
 ## Stargazers
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Somnusochi/VLM-AutoYOLO&type=Date)](https://star-history.com/#Somnusochi/VLM-AutoYOLO&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=JackeyLa5/GroundedSAM-AutoYOLO&type=Date)](https://star-history.com/#JackeyLa5/GroundedSAM-AutoYOLO&Date)
 
 ## License
 
 Code: [AGPL-3.0](LICENSE).
 
 Third-party dependencies:
-- LocateAnything-3B model — [NVIDIA License](https://huggingface.co/nvidia/LocateAnything-3B/blob/main/LICENSE) (non-commercial use only)
-- SAM3 model — [Facebook Research License](https://huggingface.co/facebook/sam3) (gated repository, requires HuggingFace access token)
+- GroundingDINO / SAM2 models — see their upstream model licenses
 - Ultralytics YOLO — [AGPL-3.0](https://github.com/ultralytics/ultralytics/blob/main/LICENSE) (copyleft; training/deployment may trigger obligations)
 
 ---
 
-If this project helps you, please ⭐ [star it on GitHub](https://github.com/Somnusochi/VLM-AutoYOLO). I'm open to new opportunities — reach out: somnusochi@gmail.com
+If this project helps you, please ⭐ [star it on GitHub](https://github.com/JackeyLa5/GroundedSAM-AutoYOLO).

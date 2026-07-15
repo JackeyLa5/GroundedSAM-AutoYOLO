@@ -9,7 +9,7 @@ import contextlib
 import json
 import logging
 import shutil
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -97,7 +97,7 @@ def _build_dataset(
         (work_dir / sub).mkdir(parents=True, exist_ok=True)
 
     class_map: dict[str, int] = {}
-    detections: list[Detection] = []
+    samples_by_image: dict[str, dict] = {}
 
     for det_id in detection_ids:
         det = db.query(Detection).filter(Detection.id == det_id).first()
@@ -106,11 +106,27 @@ def _build_dataset(
         src = Path(det.image_path)
         if not src.exists():
             continue
-        for box in _get_filtered_boxes(det):
+        boxes = _get_filtered_boxes(det)
+        if not boxes:
+            continue
+        image_key = det.image_name
+        sample = samples_by_image.setdefault(
+            image_key,
+            {
+                "id": str(det.id),
+                "image_path": src,
+                "image_name": det.image_name,
+                "image_width": det.image_width,
+                "image_height": det.image_height,
+                "boxes": [],
+            },
+        )
+        sample["boxes"].extend(boxes)
+        for box in boxes:
             if box["class_name"] not in class_map:
                 class_map[box["class_name"]] = len(class_map)
-        detections.append(det)
 
+    detections = list(samples_by_image.values())
     if not detections:
         return 0, class_map, 0, 0, 0
 
@@ -129,18 +145,27 @@ def _build_dataset(
     val_dets = detections[train_end:val_end]
     test_dets = detections[val_end:] if has_test else []
 
-    def _write_set(dets: list[Detection], subset: str) -> int:
-        fmt_fn = (
-            yolo_format.detection_to_yolo_seg
-            if task_type == "segment"
-            else yolo_format.detection_to_yolo
-        )
+    def _write_set(dets: list[dict], subset: str) -> int:
         for det in dets:
-            src = Path(det.image_path)
-            dst_img = work_dir / "images" / subset / f"{det.id}{src.suffix}"
+            src = Path(det["image_path"])
+            dst_img = work_dir / "images" / subset / f"{det['id']}{src.suffix}"
             shutil.copy2(src, dst_img)
-            dst_lbl = work_dir / "labels" / subset / f"{det.id}.txt"
-            dst_lbl.write_text(fmt_fn(det, class_map))
+            dst_lbl = work_dir / "labels" / subset / f"{det['id']}.txt"
+            if task_type == "segment":
+                label_text = yolo_format.boxes_to_yolo_seg(
+                    det["boxes"],
+                    det["image_width"],
+                    det["image_height"],
+                    class_map,
+                )
+            else:
+                label_text = yolo_format.boxes_to_yolo(
+                    det["boxes"],
+                    det["image_width"],
+                    det["image_height"],
+                    class_map,
+                )
+            dst_lbl.write_text(label_text)
         return len(dets)
 
     train_n = _write_set(train_dets, "train")
@@ -196,7 +221,8 @@ def _write_data_yaml(work_dir: Path, class_map: dict[str, int]) -> Path:
         f"train: images/train\n"
         f"val: images/val\n"
         f"nc: {len(names)}\n"
-        f"names: {json.dumps(names)}\n"
+        f"names: {json.dumps(names, ensure_ascii=False)}\n",
+        encoding="utf-8",
     )
     return yaml_path
 
@@ -319,7 +345,7 @@ def run_training(
         job.class_map = class_map
         job.model_path = str(output_path)
         job.onnx_path = str(onnx_path) if onnx_path.exists() else None
-        job.completed_at = datetime.now(UTC)
+        job.completed_at = datetime.now(timezone.utc)
         db.commit()
 
     logger.info("Training completed: %s → %s", job_id, output_path)

@@ -42,12 +42,20 @@ export function Home() {
     handleBatchSelect,
     handleDetect,
     handleReDetect,
+    handleReDetectAll,
     cancel,
     loading,
     isRedetecting,
   } = useDetectionProcess();
 
-  const { historyQuery, allItems, total, recentCategories, handleSelectHistory } = useDetectionHistory();
+  const {
+    historyQuery,
+    allItems,
+    total,
+    recentCategories,
+    handleSelectHistory,
+    handleShowHistoryBatch,
+  } = useDetectionHistory();
 
   const {
     handleDrawBox,
@@ -55,6 +63,7 @@ export function Home() {
     handleSaveBoxes,
     toggleBoxVisibility,
     displayResult,
+    maskingBox,
   } = useDetectionAnnotation();
 
   // Keyboard navigation for batch results
@@ -77,6 +86,7 @@ export function Home() {
     handleFiles,
     handleDetect,
     handleSelectHistory,
+    handleShowHistoryBatch,
     loading,
     batchProgress,
     batchResults,
@@ -144,9 +154,11 @@ export function Home() {
                 setResult(null);
               }}
               onReDetect={handleReDetect}
+              onReDetectAll={handleReDetectAll}
               onSaveBoxes={handleSaveBoxes}
               onDrawBox={handleDrawBox}
               isRedetecting={isRedetecting}
+              maskingBox={maskingBox}
             />
           </ErrorBoundary>
         )}

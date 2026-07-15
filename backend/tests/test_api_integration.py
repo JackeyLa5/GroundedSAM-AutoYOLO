@@ -22,7 +22,7 @@ TEST_IMAGE = os.path.join(CAT_DIR, "pexels-helen1-30002394.jpg") if os.path.isdi
 
 def _backend_reachable():
     try:
-        requests.get(f"{BASE}/model/status", timeout=2)
+        requests.get(f"{BASE}/model/grounded-sam/status", timeout=2)
         return True
     except Exception:
         return False
@@ -66,7 +66,7 @@ def _validate_detection_response(data):
     assert isinstance(data["id"], str) and len(data["id"]) > 0
     assert isinstance(data["imageName"], str)
     assert isinstance(data["categories"], list) and len(data["categories"]) > 0
-    assert isinstance(data["modelType"], str) and data["modelType"] in ("vlm", "vlm+sam2", "sam3")
+    assert isinstance(data["modelType"], str) and data["modelType"] == "grounded-sam"
     assert data["imageWidth"] > 0
     assert data["imageHeight"] > 0
     assert isinstance(data["elapsedMs"], (int, type(None)))
@@ -76,16 +76,15 @@ def _validate_detection_response(data):
     _validate_boxes(data["boxes"], data["imageWidth"], data["imageHeight"])
 
 
-def _post_detect(use_sam3=False):
+def _post_detect():
     with open(TEST_IMAGE, "rb") as f:
         return requests.post(
             f"{BASE}/detect",
             files={"file": ("test.jpg", f, "image/jpeg")},
             data={
                 "categories": '["cat"]',
-                "use_sam3": str(use_sam3).lower(),
-                "use_sam3_seg": "false",
-                "sam3_threshold": "0.5",
+                "use_grounded_sam_seg": "false",
+                "grounded_sam_threshold": "0.5",
             },
             timeout=120,
         )
@@ -94,8 +93,8 @@ def _post_detect(use_sam3=False):
 @backend_required
 @pytest.mark.skipif(not (TEST_IMAGE and os.path.exists(TEST_IMAGE)), reason="no test images")
 class TestDetectionFlow:
-    def test_detect_vlm(self):
-        """VLM detection returns valid response."""
+    def test_detect_grounded_sam_default(self):
+        """Grounded-SAM detection returns valid response."""
         with open(TEST_IMAGE, "rb") as f:
             resp = requests.post(
                 f"{BASE}/detect",
@@ -108,20 +107,13 @@ class TestDetectionFlow:
         _validate_detection_response(data)
         assert len(data["boxes"]) > 0
 
-    @pytest.mark.skipif(
-        not os.environ.get("HF_TOKEN")
-        and not os.path.isdir(
-            os.path.expanduser("~/.cache/huggingface/hub/models--facebook--sam3")
-        ),
-        reason="SAM3 requires HF_TOKEN or cached model",
-    )
-    def test_detect_sam3(self):
-        """SAM3 detection returns valid response."""
-        resp = _post_detect(use_sam3=True)
+    def test_detect_grounded_sam_without_masks(self):
+        """Grounded-SAM bbox-only mode returns valid response."""
+        resp = _post_detect()
         assert resp.status_code == 201, resp.json()
         data = resp.json()["data"]
         _validate_detection_response(data)
-        assert data["modelType"] == "sam3"
+        assert data["modelType"] == "grounded-sam"
 
     def test_list_returns_lightweight_boxes(self):
         """List endpoint returns boxes without maskPolygon."""
@@ -186,15 +178,15 @@ class TestModelManagement:
 
     def test_model_status_endpoints(self):
         """Individual status endpoints respond."""
-        endpoints = ["/model/status", "/model/sam2/status", "/model/sam3/status"]
+        endpoints = ["/model/grounded-sam/status"]
         for ep in endpoints:
             resp = requests.get(f"{BASE}{ep}", timeout=5)
             assert resp.status_code == 200
             assert "data" in resp.json()
 
-    def test_sam3_unload(self):
-        """SAM3 unload returns 204."""
-        resp = requests.post(f"{BASE}/model/sam3/unload", timeout=5)
+    def test_grounded_sam_unload(self):
+        """Grounded-SAM unload returns 204."""
+        resp = requests.post(f"{BASE}/model/grounded-sam/unload", timeout=5)
         # 204 or 500 (not running) both acceptable
         assert resp.status_code in (204, 500)
 

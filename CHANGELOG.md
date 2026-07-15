@@ -11,10 +11,10 @@
 ## v1.5.12 (2026-06-22)
 
 ### Model Loading Diagnostics
-- Fix: propagate real VLM model loading and inference exceptions through API responses instead of returning only a generic detection failure.
+- Fix: propagate real Grounded-SAM model loading and inference exceptions through API responses instead of returning only a generic detection failure.
 - Fix: batch detection no longer swallows non-abort errors, so frontend toasts now show backend details such as CUDA OOM, missing GPU runtime, driver errors, or dependency import failures.
 - Fix: model status switches to `error` when device preflight fails, preventing stale `Loading to GPU` status after an unsupported CPU/no-GPU setup.
-- Docs: add EN/ZH troubleshooting steps for VLM stuck at `Loading to GPU` with Docker log and CUDA diagnostic commands.
+- Docs: add EN/ZH troubleshooting steps for Grounded-SAM stuck at `Loading to GPU` with Docker log and CUDA diagnostic commands.
 
 ## v1.5.9 (2026-06-08)
 
@@ -53,9 +53,9 @@
 
 ### CLI
 - Feat: `python3 cli.py all` — one-command setup, model download, and launch
-- Feat: `--models=vlm|sam2|all` select which models to pre-download (~6GB / ~2.4GB)
+- Feat: `--models=grounded-sam|all` select which models to pre-download (~6GB / ~2.4GB)
 - Feat: `stop` / `status` / `download` commands, `--help`, `--no-models`
-- Feat: automatic SAM3 HF_TOKEN check with step-by-step setup guide
+- Feat: automatic Grounded-SAM setup check with step-by-step guide
 - Feat: cross-platform (Windows/Linux/macOS), pnpm auto-install, port conflict detection
 
 ### Security
@@ -111,8 +111,8 @@
 
 ### Detection Improvements
 - Feat: cancel in-flight detection with AbortController — truly aborts HTTP requests
-- Fix: SAM3 health check race condition — wait for `status=="loaded"`, not just HTTP 200
-- Fix: Enum `values_callable` to match existing DB data (e.g. `'vlm+sam2'` not `'vlm_sam2'`)
+- Fix: Grounded-SAM health check race condition — wait for `status=="loaded"`, not just HTTP 200
+- Fix: Enum `values_callable` to match existing DB data
 - Fix: validation conf/iou parameters now read from Zustand (were stale local state)
 - Fix: canvas image load race condition with `loadId` counter
 - Fix: model status flicker — skip `optimisticModelLoading` when already loaded
@@ -137,7 +137,7 @@
 - Fix: `maskClosable` → `mask.closable` (antd deprecation)
 - Fix: `_read_yolo_names` unbound `names` variable when `data.yaml` missing
 - Fix: strategy test constructor calls (DI requires mock functions)
-- Fix: test SAM3 skip condition also checks local model cache
+- Fix: test Grounded-SAM skip condition also checks local model cache
 - Fix: `test-results/` added to `.gitignore`
 
 ## v1.5.6 (2026-06-07)
@@ -163,19 +163,19 @@
 ### Refactoring & Code Quality
 - Refactor: split `useHomeState` (311-line giant hook) into `useModelConfig`, `useUploadState`, `useAnnotationState`, `useDetectionTimer` — `useHomeState` now coordinates
 - Test: add Playwright E2E tests (6 cases: page render, model switch, history list, detail view, model status, upload+detect)
-- Test: add integration tests (10 cases: VLM/SAM3 detection, list/detail consistency, SSE, model management, mask validation)
+- Test: add integration tests (10 cases: Grounded-SAM detection, list/detail consistency, SSE, model management, mask validation)
 - Test: add regression snapshot tests (7 cases: 5 images × box position + model type consistency)
 - Test: add `test_api_integration.py` with data integrity checks (box bounds, confidence range, polygon validity, list/detail consistency)
 - Chore: add commitlint config (conventional commits)
 
 ## v1.5.4 (2026-06-07)
 
-### SAM3 Stability & Performance
-- Fix: SAM3 stuck at "loading" when HF_TOKEN not set — fall back to `local_files_only=True` for cached models
-- Fix: SAM3 load errors silently swallowed — wrap `load_model` in try/except, report errors via `/health`
+### Grounded-SAM Stability & Performance
+- Fix: Grounded-SAM stuck at "loading" when HF_TOKEN not set — fall back to `local_files_only=True` for cached models
+- Fix: Grounded-SAM load errors silently swallowed — wrap `load_model` in try/except, report errors via `/health`
 - Fix: HF_TOKEN required even when model cached — only check token when cache missing
-- Fix: SAM3 stdout/stderr redirected to log file instead of DEVNULL for debugging
-- Fix: SAM3 server using wrong Python interpreter — always prefer `sam3-venv/bin/python3` when available
+- Fix: Grounded-SAM stdout/stderr redirected to log file instead of DEVNULL for debugging
+- Fix: Grounded-SAM server using wrong Python interpreter — always prefer `grounded-sam2-venv/bin/python3` when available
 - Opt: skip alembic migration check when database already at head revision, reducing startup time
 
 ### Bug Fixes
@@ -189,47 +189,47 @@
 - Keyboard arrow keys (← →) navigate between batch results
 
 ### Docker
-- SAM3 service in `docker-compose.yml` (port 8002, `sam3-cache` volume, `HF_TOKEN` env)
-- Dockerfile creates dedicated `sam3-venv` for dependency isolation
-- `requirements-sam3.txt` for SAM3 server dependencies
+- Grounded-SAM service in `docker-compose.yml` (port 8002, `hf-cache` volume, `HF_TOKEN` env)
+- Dockerfile creates dedicated `grounded-sam2-venv` for dependency isolation
+- `requirements-grounded-sam.txt` for Grounded-SAM server dependencies
 
 ### Tests & Docs
-- Add `test_detection_strategy.py` (9 tests: strategy creation, DetectionResult, SAM3 priority)
-- Add macOS MPS SAM3 benchmarks to `docs/BENCHMARKS.md`
-- Update `docs/STRUCTURE.md` and user guides with SAM3 content
+- Add `test_detection_strategy.py` (9 tests: strategy creation, DetectionResult, Grounded-SAM priority)
+- Add macOS MPS Grounded-SAM benchmarks to `docs/BENCHMARKS.md`
+- Update `docs/STRUCTURE.md` and user guides with Grounded-SAM content
 
 ## v1.5.3 (2026-06-06)
 
-### SAM3 Integration
-- Feat: add SAM3 (facebook/sam3) as third detection strategy — text-driven open-vocabulary detection + segmentation
-- Feat: SAM3 standalone HTTP service on port 8002 with dedicated venv (transformers 5.x, torch 2.12)
-- Feat: model selector toggle in sidebar (VLM+SAM2 / SAM3)
-- Feat: SAM3 confidence threshold slider (0–1, default 0.5) and mask threshold slider (0–1, default 0.5)
-- Feat: SAM3 segmentation on/off checkbox — bbox-only mode skips mask extraction
-- Feat: SAM3 idle watchdog — auto-unload after `MODEL_IDLE_TIMEOUT_SECONDS` (default 10 min)
-- Feat: SAM3 manual unload button with toast feedback
-- Feat: backend auto-unloads competing models on detection (SAM3 ↔ VLM/SAM2)
-- Feat: SAM3 server async startup — HTTP ready immediately, model loads in background, `/health` reports `starting` → `loading` → `loaded`
+### Grounded-SAM Integration
+- Feat: add Grounded-SAM (GroundingDINO + SAM2) as unified detection strategy — text-driven open-vocabulary detection + segmentation
+- Feat: Grounded-SAM standalone HTTP service on port 8002 with dedicated venv
+- Feat: model selector toggle in sidebar
+- Feat: Grounded-SAM confidence threshold slider (0–1, default 0.5) and mask threshold slider (0–1, default 0.5)
+- Feat: Grounded-SAM segmentation on/off checkbox — bbox-only mode skips mask extraction
+- Feat: Grounded-SAM idle watchdog — auto-unload after `MODEL_IDLE_TIMEOUT_SECONDS` (default 10 min)
+- Feat: Grounded-SAM manual unload button with toast feedback
+- Feat: backend auto-unloads the Grounded-SAM service when idle
+- Feat: Grounded-SAM server async startup — HTTP ready immediately, model loads in background, `/health` reports `starting` → `loading` → `loaded`
 
 ### Architecture
-- Feat: strategy pattern (`detection_strategy.py`) — `VLMDetection`, `VLMWithSAM2`, `SAM3Detection`
-- Feat: unified SSE endpoint `GET /api/v1/model/events` — VLM/SAM2/SAM3 status in one EventSource, replaces 3 polling intervals
+- Feat: strategy pattern (`detection_strategy.py`) — `GroundedSamDetection`
+- Feat: unified SSE endpoint `GET /api/v1/model/events` — Grounded-SAM status in one EventSource, replaces polling intervals
 - Feat: `useModelEvents` hook — single SSE subscriber, all model status components read from it
-- Feat: `Detection.model_type` column — labels each record as `vlm`, `vlm+sam2`, or `sam3`
+- Feat: `Detection.model_type` column — labels each record with its detection model
 - Feat: list endpoint returns lightweight boxes without `maskPolygon`; detail endpoint retains full mask data
 - Feat: `HoverPreview` component — on-demand fetch of detection detail for training hover preview
-- Fix: VLM detection coordinate scaling lost during refactoring — boxes now correctly scaled back to original image space
-- Fix: SAM3 server multipart body construction — fields properly separated with boundary markers
-- Fix: `create_strategy` swallowing kwargs — `use_sam3_seg`, threshold params now passed to `detect()`
+- Fix: Grounded-SAM detection coordinate scaling lost during refactoring — boxes now correctly scaled back to original image space
+- Fix: Grounded-SAM server multipart body construction — fields properly separated with boundary markers
+- Fix: `create_strategy` swallowing kwargs — segmentation and threshold params now passed to `detect()`
 
 ### Frontend
-- Feat: model type badges in history list and training candidate list (color-coded: blue=VLM, amber=VLM+SAM2, violet=SAM3)
+- Feat: model type badges in history list and training candidate list
 - Feat: batch detection loading states — canvas overlay cleared once first result arrives
 - Fix: model status polling now continues when `unloaded` (3s interval), preventing missed loading transitions
 
 ### Docs
-- Docs: update README (EN/ZH) — SAM3 architecture, SSE status, strategy pattern, detection parameters
-- Docs: update CLAUDE.md — startup env requirements, SAM3 architecture, SSE, directory conventions
+- Docs: update README (EN/ZH) — Grounded-SAM architecture, SSE status, strategy pattern, detection parameters
+- Docs: update CLAUDE.md — startup env requirements, Grounded-SAM architecture, SSE, directory conventions
 - Docs: update API.md — `/detect` form parameters, model management SSE endpoint, detection object schema
 
 ## v1.5.2 (2026-06-05)
@@ -257,7 +257,7 @@
 ## v1.4.9 (2026-06-05)
 - Japanese (日本語) i18n — full UI translation
 - Three-button language selector (中 / EN / 日) matching theme toggle style
-- SAM2 status labels — "SAM2 模型" instead of "VLM 模型"
+- Grounded-SAM status labels — "Grounded-SAM 模型" instead of generic model wording
 - Frontend: HistoryList pagination, training component refactor
 
 ## v1.4.8 (2026-06-05)
@@ -266,7 +266,7 @@
 
 ## v1.4.7 (2026-06-05)
 
-- VLM confidence score infrastructure: `<conf>` parser, DB wiring, canvas color-coding
+- Grounded-SAM confidence score infrastructure: `<conf>` parser, DB wiring, canvas color-coding
 - Fix: `parse_boxes` test assertions for new confidence field
 
 ## v1.4.6 (2026-06-05)
@@ -349,7 +349,7 @@
 
 - Video annotation & keyframe extraction (scene/motion/interval)
 - MJPEG / SSE video validation
-- Remove CPU mode — LocateAnything-3B requires GPU
+- Remove CPU mode — Grounded-SAM requires GPU
 
 ## v1.0.1 (2026-06-04)
 
@@ -358,7 +358,7 @@
 ## v1.0.0 (2026-06-04)
 
 - Initial stable release
-- VLM detection with LocateAnything-3B
+- Grounded-SAM auto-labeling
 - YOLO training (v5/v8/v11/v26) with SSE real-time progress
 - Model validation (MJPEG live stream, SSE video, batch images)
 - Canvas-based manual annotation with NMS filtering
@@ -370,7 +370,7 @@
 ## Pre-v1.0 (2026-06-02)
 
 - Initial commit — YOLO auto-labeling training platform
-- VLM detection pipeline with LocateAnything-3B
+- Grounded-SAM detection pipeline
 - YOLO training integration (v5/v8/v11/v26) with cascading model variant selector
 - Manual box annotation with canvas drawing mode
 - Detection history with thumbnails, tag filtering, hover preview popover

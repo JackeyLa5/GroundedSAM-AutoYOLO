@@ -1,7 +1,6 @@
 # Python
 .venv/
-.venv-sam3/
-sam3-venv/
+grounded-sam2-venv/
 __pycache__/
 *.pyc
 *.pyo

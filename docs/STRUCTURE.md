@@ -1,7 +1,7 @@
 # Project Structure
 
 ```
-VLM-AutoYOLO/
+AutoYOLO/
 ├── backend/
 │   ├── app/
 │   │   ├── api/
@@ -16,7 +16,7 @@ VLM-AutoYOLO/
 │   │   ├── core/
 │   │   │   ├── config.py            # Settings, device auto-detect, allocator tuning
 │   │   │   ├── database.py          # SQLAlchemy engine + session
-│   │   │   ├── gpu_memory.py        # GPU memory strategy (CUDA / MPS / CPU)
+│   │   │   ├── gpu_memory.py        # GPU memory strategy (CUDA focused)
 │   │   │   ├── exceptions.py        # Custom exceptions
 │   │   │   └── middleware.py        # Request ID, CORS, logging
 │   │   ├── models/                  # SQLAlchemy ORM
@@ -30,14 +30,11 @@ VLM-AutoYOLO/
 │   │   │   ├── detection.py         # DetectionOut, DetectionBoxOut, ExportBatchIn
 │   │   │   └── train.py             # TrainingJobOut, TrainRequest
 │   │   ├── services/
-│   │   │   ├── detection_strategy.py # Strategy pattern (VLM / VLM+SAM2 / SAM3)
+│   │   │   ├── detection_strategy.py # Grounded-SAM detection orchestration
 │   │   │   ├── box_filter.py        # Box filtering, NMS dedup
-│   │   │   ├── locate_anything.py   # VLM inference engine
-│   │   │   ├── sam2_service.py      # SAM2 segmentation service
-│   │   │   ├── sam3_client.py       # SAM3 HTTP client + watchdog
+│   │   │   ├── grounded_sam_client.py # Grounded-SAM HTTP client + watchdog
 │   │   │   ├── trainer.py           # YOLO training + validation
 │   │   │   ├── detection_service.py # Detection orchestration (offload → infer → persist)
-│   │   │   ├── detection_strategy.py # Strategy pattern (VLM / VLM+SAM2 / SAM3)
 │   │   │   ├── dataset_import.py    # Dataset import parsers (5 formats)
 │   │   │   ├── training_queue.py    # Training job queue with cancel
 │   │   │   ├── export.py            # Multi-format export dispatcher
@@ -51,8 +48,8 @@ VLM-AutoYOLO/
 │   ├── alembic/                     # Database migrations
 │   │   ├── env.py
 │   │   └── versions/
-│   ├── sam3_server.py              # SAM3 standalone WSGI server (port 8002)
-│   ├── sam3-venv/                   # SAM3 dedicated virtual environment
+│   ├── grounded_sam2_server.py      # Grounded-SAM standalone WSGI server (port 8002)
+│   ├── grounded-sam2-venv/          # Grounded-SAM dedicated virtual environment
 │   ├── tests/
 │   │   ├── test_api_integration.py  # API integration tests (detection → training → validation)
 │   │   ├── test_regression.py       # Regression snapshot tests (box position drift detection)
@@ -69,8 +66,7 @@ VLM-AutoYOLO/
 │       │   ├── HistoryList.tsx      # Detection history (paginated, export)
 │       │   ├── HistoryListItem.tsx  # Individual history item card
 │       │   ├── ResultTable.tsx      # Results table with mask column
-│       │   ├── ModelStatus.tsx      # VLM + SAM2 model status display
-│       │   ├── Sam3Status.tsx       # SAM3 model status display
+│       │   ├── ModelStatus.tsx      # Grounded-SAM service status display
 │       │   ├── training/            # YOLO training sub-components
 │       │   │   ├── TrainingCandidateList.tsx
 │       │   │   ├── CandidateListItem.tsx
@@ -78,7 +74,7 @@ VLM-AutoYOLO/
 │       │   │   ├── TrainingPreview.tsx
 │       │   │   ├── HoverPreview.tsx # On-demand detection detail for hover
 │       │   │   └── StatusBadge.tsx
-│       │   ├── Sidebar.tsx          # Main sidebar (model selector, SAM2/SAM3 toggle)
+│       │   ├── Sidebar.tsx          # Main sidebar and Grounded-SAM controls
 │       │   ├── VideoPanel.tsx       # Video upload & keyframe timeline
 │       │   ├── VideoValidator.tsx   # Video validation
 │       │   ├── ModelSelector.tsx    # YOLO model variant selector
@@ -104,8 +100,11 @@ VLM-AutoYOLO/
 │   ├── STRUCTURE.md                 # Project structure (this file)
 │   ├── guide/                       # 中文用户指南
 │   └── guide/en/                    # English user guide
-├── docker-compose.yml
+├── docker/
+│   ├── docker-compose.yml           # Ubuntu x86 CUDA Docker stack
+│   ├── backend.Dockerfile           # Backend + Grounded-SAM2 image
+│   ├── frontend.Dockerfile          # Frontend Nginx image
+│   └── nginx.conf                   # Frontend reverse proxy config
 ├── commitlint.config.js            # Conventional commits enforcement
-├── start.sh / start.bat
 └── README.md
 ```

@@ -1,6 +1,6 @@
 {
   "imageName": "pexels-fotios-photos-35855166.jpg",
-  "modelType": "vlm",
+  "modelType": "grounded-sam",
   "imageWidth": 3888,
   "imageHeight": 5184,
   "boxCount": 1,
