@@ -21,12 +21,16 @@ from ...core.database import get_db
 from ...models.train import TrainingDetection, TrainingJob
 from ...schemas.common import APIResponse
 from ...schemas.train import TrainingJobOut, TrainRequest
-from ...services.trainer import YOLO_SERIES
+from ...services.trainer import YOLO_SERIES, _pretrained_name
 from ...services.training_queue import cancel_job, enqueue_job
 from ..deps import get_request_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/train", tags=["train"])
+
+
+def _job_model_name(job: TrainingJob) -> str:
+    return _pretrained_name(job.model_variant, job.task_type)
 
 
 @router.get("/variants")
@@ -224,7 +228,7 @@ def download_dataset(
         return FileResponse(
             base,
             media_type="application/zip",
-            filename=f"dataset_{job.model_variant}.zip",
+            filename=f"dataset_{_job_model_name(job)}.zip",
         )
     except Exception as exc:
         tmp_path.unlink(missing_ok=True)
@@ -272,7 +276,7 @@ def export_onnx(
         return FileResponse(
             job.onnx_path,
             media_type="application/octet-stream",
-            filename=f"{job.model_variant}_finetuned.onnx",
+            filename=f"{_job_model_name(job)}_finetuned.onnx",
         )
 
     # Convert on demand
@@ -292,7 +296,7 @@ def export_onnx(
         return FileResponse(
             onnx,
             media_type="application/octet-stream",
-            filename=f"{job.model_variant}_finetuned.onnx",
+            filename=f"{_job_model_name(job)}_finetuned.onnx",
         )
     except Exception as exc:
         raise HTTPException(500, f"ONNX export failed: {exc}") from exc
@@ -309,7 +313,7 @@ def download_model(
     return FileResponse(
         job.model_path,
         media_type="application/octet-stream",
-        filename=f"{job.model_variant}_finetuned.pt",
+        filename=f"{_job_model_name(job)}_finetuned.pt",
     )
 
 

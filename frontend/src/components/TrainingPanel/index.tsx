@@ -28,7 +28,7 @@ export function TrainingPanel({ detections, total, hasNextPage, isFetchingNextPa
   const [imgsz, setImgsz] = useState(DEFAULT_IMGSZ);
   const [batch, setBatch] = useState(DEFAULT_BATCH);
   const [splitPreset, setSplitPreset] = useState("70/20/10");
-  const [taskType, setTaskType] = useState("detect");
+  const [taskType, setTaskType] = useState("segment");
 
   const splitPresets: Record<string, { train: number; val: number }> = {
     "70 / 20 / 10": { train: 0.7, val: 0.2 },

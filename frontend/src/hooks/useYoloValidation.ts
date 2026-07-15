@@ -82,6 +82,7 @@ export function useYoloValidation() {
             x2: b.x2 as number,
             y2: b.y2 as number,
             confidence: b.confidence as number,
+            maskPolygon: (b.maskPolygon as number[][] | null | undefined) ?? null,
           })),
         };
       } catch {

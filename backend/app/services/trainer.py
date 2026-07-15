@@ -67,6 +67,13 @@ YOLO_SERIES = {
 }
 
 
+def _pretrained_name(model_variant: str, task_type: str) -> str:
+    """Return the Ultralytics pretrained checkpoint name for a task."""
+    if task_type == "segment" and not model_variant.endswith("-seg"):
+        return f"{model_variant}-seg"
+    return model_variant
+
+
 def _build_dataset(
     detection_ids: list[str],
     db: Session,
@@ -197,18 +204,28 @@ def _metrics_dict(metrics_obj: object | None) -> dict[str, float]:
     return {}
 
 
+def _metric_value(rd: dict, name: str, task_type: str) -> float:
+    suffixes = ["M", "B"] if task_type == "segment" else ["B", "M"]
+    for suffix in suffixes:
+        key = f"metrics/{name}({suffix})"
+        if key in rd:
+            return float(rd.get(key, 0))
+    return 0.0
+
+
 def _training_metrics(
-    metrics_obj: object | None, sample_count: int, class_map: dict[str, int]
+    metrics_obj: object | None, sample_count: int, class_map: dict[str, int], task_type: str
 ) -> dict:
     rd = _metrics_dict(metrics_obj)
     return {
-        "mAP50": float(rd.get("metrics/mAP50(B)", 0)),
-        "mAP50-95": float(rd.get("metrics/mAP50-95(B)", 0)),
-        "precision": float(rd.get("metrics/precision(B)", 0)),
-        "recall": float(rd.get("metrics/recall(B)", 0)),
+        "mAP50": _metric_value(rd, "mAP50", task_type),
+        "mAP50-95": _metric_value(rd, "mAP50-95", task_type),
+        "precision": _metric_value(rd, "precision", task_type),
+        "recall": _metric_value(rd, "recall", task_type),
         "num_samples": sample_count,
         "num_classes": len(class_map),
         "class_map": {v: k for k, v in class_map.items()},
+        "task_type": task_type,
     }
 
 
@@ -290,13 +307,14 @@ def run_training(
         trainer_metrics = getattr(trainer, "metrics", None)
         if trainer_metrics:
             rd = _metrics_dict(trainer_metrics)
-            data["mAP50"] = float(rd.get("metrics/mAP50(B)", 0))
-            data["mAP50_95"] = float(rd.get("metrics/mAP50-95(B)", 0))
+            data["mAP50"] = _metric_value(rd, "mAP50", task_type)
+            data["mAP50_95"] = _metric_value(rd, "mAP50-95", task_type)
         progress_file.write_text(json.dumps(data))
 
     pretrained_dir = settings.project_root / "pretrained"
     pretrained_dir.mkdir(exist_ok=True)
-    model = YOLO(str(pretrained_dir / f"{model_variant}.pt"))
+    pretrained_name = _pretrained_name(model_variant, task_type)
+    model = YOLO(str(pretrained_dir / f"{pretrained_name}.pt"))
     model.add_callback("on_fit_epoch_end", on_fit_epoch_end)
 
     # Write initial progress
@@ -333,7 +351,7 @@ def run_training(
         logger.warning("ONNX export failed, continuing", exc_info=True)
 
     # 4. Collect metrics
-    metrics = _training_metrics(results, sample_count, class_map)
+    metrics = _training_metrics(results, sample_count, class_map, task_type)
 
     # 5. Update DB
     from ..models.train import TrainingJob
@@ -397,21 +415,33 @@ def predict_trained_model(
     boxes_out: list[dict] = []
     if results and results[0].boxes is not None:
         r = results[0]
+        mask_polygons = []
+        masks = getattr(r, "masks", None)
+        if masks is not None and getattr(masks, "xy", None) is not None:
+            mask_polygons = masks.xy
         for i in range(len(r.boxes)):
             x1, y1, x2, y2 = r.boxes.xyxy[i].tolist()
             conf_val = float(r.boxes.conf[i])
             cls_id = int(r.boxes.cls[i])
             cls_name = r.names.get(cls_id, str(cls_id)) if r.names else str(cls_id)
-            boxes_out.append(
-                {
-                    "class_name": cls_name,
-                    "confidence": round(conf_val, 4),
-                    "x1": int(x1),
-                    "y1": int(y1),
-                    "x2": int(x2),
-                    "y2": int(y2),
-                }
-            )
+            box = {
+                "class_name": cls_name,
+                "confidence": round(conf_val, 4),
+                "x1": int(x1),
+                "y1": int(y1),
+                "x2": int(x2),
+                "y2": int(y2),
+            }
+            if i < len(mask_polygons):
+                raw_polygon = mask_polygons[i]
+                points = raw_polygon.tolist() if hasattr(raw_polygon, "tolist") else raw_polygon
+                polygon = [
+                    [int(round(float(px))), int(round(float(py)))]
+                    for px, py in points
+                ]
+                if len(polygon) >= 3:
+                    box["mask_polygon"] = polygon
+            boxes_out.append(box)
 
     w, h = 0, 0
     if results:

@@ -18,7 +18,7 @@ class TrainRequest(BaseSchema):
     val_ratio: float = Field(
         default=0.2, ge=0.0, le=0.9, description="validation set ratio (test = 1 - train - val)"
     )
-    task_type: str = Field(default="detect", description="detect | segment | classify")
+    task_type: str = Field(default="segment", description="detect | segment | classify")
 
 
 class TrainingJobOut(BaseSchema):
@@ -30,7 +30,7 @@ class TrainingJobOut(BaseSchema):
     batch: int
     train_ratio: float = 0.7
     val_ratio: float = 0.2
-    task_type: str = "detect"
+    task_type: str = "segment"
     detection_ids: list[str] = []
     class_map: dict | None = None
     status: str

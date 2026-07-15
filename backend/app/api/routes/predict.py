@@ -23,7 +23,7 @@ from ...models.train import TrainingJob
 from ...models.video import Video
 from ...schemas.common import APIResponse
 from ...services.frame_utils import draw_frame, predict_frame
-from ...services.trainer import predict_trained_model
+from ...services.trainer import _pretrained_name, predict_trained_model
 from ...services.video_service import _ffprobe
 
 router = APIRouter(prefix="/api/v1/train", tags=["predict"])
@@ -37,6 +37,22 @@ _external_models_dir.mkdir(exist_ok=True)
 
 def _token_path(token: str) -> Path:
     return _external_models_dir / f"{token}.pt"
+
+
+def _box_to_camel(box: dict) -> dict:
+    return {
+        "className": box["class_name"],
+        "confidence": box["confidence"],
+        "x1": box["x1"],
+        "y1": box["y1"],
+        "x2": box["x2"],
+        "y2": box["y2"],
+        "maskPolygon": box.get("mask_polygon"),
+    }
+
+
+def _job_model_name(job: TrainingJob) -> str:
+    return _pretrained_name(job.model_variant, job.task_type)
 
 
 @router.post("/upload-model")
@@ -92,23 +108,13 @@ async def predict_with_model(
     if job.metrics and isinstance(job.metrics, dict):
         class_map = job.metrics.get("class_map", {})
 
-    boxes_camel = [
-        {
-            "className": b["class_name"],
-            "confidence": b["confidence"],
-            "x1": b["x1"],
-            "y1": b["y1"],
-            "x2": b["x2"],
-            "y2": b["y2"],
-        }
-        for b in result["boxes"]
-    ]
+    boxes_camel = [_box_to_camel(b) for b in result["boxes"]]
     return APIResponse(
         data={
             "imageWidth": result["image_width"],
             "imageHeight": result["image_height"],
             "boxes": boxes_camel,
-            "modelVariant": job.model_variant,
+            "modelVariant": _job_model_name(job),
             "classMap": class_map,
         }
     )
@@ -141,17 +147,7 @@ async def predict_external_model(
     finally:
         get_memory_manager().full_cleanup()
 
-    boxes_camel = [
-        {
-            "className": b["class_name"],
-            "confidence": b["confidence"],
-            "x1": b["x1"],
-            "y1": b["y1"],
-            "x2": b["x2"],
-            "y2": b["y2"],
-        }
-        for b in result["boxes"]
-    ]
+    boxes_camel = [_box_to_camel(b) for b in result["boxes"]]
     return APIResponse(
         data={
             "imageWidth": result["image_width"],
@@ -538,17 +534,7 @@ def predict_video(
                 iou=iou,
             )
 
-            boxes_camel = [
-                {
-                    "className": b["class_name"],
-                    "confidence": b["confidence"],
-                    "x1": b["x1"],
-                    "y1": b["y1"],
-                    "x2": b["x2"],
-                    "y2": b["y2"],
-                }
-                for b in r["boxes"]
-            ]
+            boxes_camel = [_box_to_camel(b) for b in r["boxes"]]
             results.append(
                 {
                     "frameNumber": frame_num,
@@ -563,7 +549,7 @@ def predict_video(
         proc.terminate()
         return APIResponse(
             data={
-                "modelVariant": job.model_variant,
+                "modelVariant": _job_model_name(job),
                 "frameCount": len(results),
                 "frames": results,
             }

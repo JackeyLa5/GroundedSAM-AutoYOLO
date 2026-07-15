@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from app.services.trainer import _build_dataset, _write_data_yaml
+from app.services.trainer import _build_dataset, _pretrained_name, _write_data_yaml
 
 
 class FakeBox:
@@ -166,6 +166,12 @@ def test_write_data_yaml_keeps_unicode_names(work_dir):
     content = yaml_path.read_text(encoding="utf-8")
     assert "瓶子" in content
     assert "\\u74f6\\u5b50" not in content
+
+
+def test_segment_task_uses_segmentation_checkpoint():
+    assert _pretrained_name("yolo26n", "segment") == "yolo26n-seg"
+    assert _pretrained_name("yolo26n-seg", "segment") == "yolo26n-seg"
+    assert _pretrained_name("yolo26n", "detect") == "yolo26n"
 
 
 def test_build_dataset_two_samples(tmp_path, work_dir):

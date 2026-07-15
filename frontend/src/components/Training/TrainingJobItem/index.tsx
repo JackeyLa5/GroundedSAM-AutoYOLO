@@ -1,9 +1,11 @@
 import { Modal, Popconfirm, Popover } from "antd";
+import { displayTrainingJobModel } from "@/lib/modelDisplay";
 import { StatusBadge } from "../StatusBadge";
 
 export function TrainingJobItem({ job }: { job: TrainingJob }) {
   const { t, i18n } = useTranslation();
   const qc = useQueryClient();
+  const displayVariant = displayTrainingJobModel(job);
   const [cancelling, setCancelling] = useState(false);
   const [chartOpen, setChartOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
@@ -56,7 +58,7 @@ export function TrainingJobItem({ job }: { job: TrainingJob }) {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") e.stopPropagation();
                 }}
-                placeholder={job.modelVariant}
+                placeholder={displayVariant}
                 className="mt-1 w-full rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:border-primary-400"
                 maxLength={128}
               />
@@ -76,7 +78,7 @@ export function TrainingJobItem({ job }: { job: TrainingJob }) {
             placement="bottomLeft"
           >
             <span className="font-medium text-primary-600 cursor-pointer hover:text-primary-700 truncate max-w-[200px]">
-              {job.name || job.modelVariant}
+              {job.name || displayVariant}
             </span>
           </Popconfirm>
           {job.completedAt && (
@@ -250,7 +252,7 @@ export function TrainingJobItem({ job }: { job: TrainingJob }) {
                   onClick={() => {
                     window.dispatchEvent(
                       new CustomEvent("yolo-validate", {
-                        detail: { jobId: job.id, modelVariant: job.modelVariant },
+                        detail: { jobId: job.id, modelVariant: displayVariant },
                       }),
                     );
                   }}

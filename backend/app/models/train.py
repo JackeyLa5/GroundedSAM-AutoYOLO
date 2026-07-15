@@ -18,13 +18,13 @@ class TrainingJob(Base):
         default=uuid.uuid4,
     )
     name: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
-    model_variant: Mapped[str] = mapped_column(String(32), default="yolo11n")
+    model_variant: Mapped[str] = mapped_column(String(32), default="yolo26n")
     epochs: Mapped[int] = mapped_column(Integer, default=100)
     imgsz: Mapped[int] = mapped_column(Integer, default=640)
     batch: Mapped[int] = mapped_column(Integer, default=16)
     train_ratio: Mapped[float] = mapped_column(Float, default=0.7)
     val_ratio: Mapped[float] = mapped_column(Float, default=0.2)
-    task_type: Mapped[str] = mapped_column(String(16), default="detect")
+    task_type: Mapped[str] = mapped_column(String(16), default="segment")
     class_map: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32),

@@ -82,6 +82,8 @@ declare global {
   const deleteTrainingJob: typeof import('./services/api').deleteTrainingJob
   const deleteVideo: typeof import('./services/api').deleteVideo
   const detectImage: typeof import('./services/api').detectImage
+  const displayModelVariant: typeof import('./lib/modelDisplay').displayModelVariant
+  const displayTrainingJobModel: typeof import('./lib/modelDisplay').displayTrainingJobModel
   const downloadBlob: typeof import('./services/api').downloadBlob
   const downloadDatasetUrl: typeof import('./services/api').downloadDatasetUrl
   const downloadModelUrl: typeof import('./services/api').downloadModelUrl
