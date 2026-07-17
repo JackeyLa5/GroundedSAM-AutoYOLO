@@ -80,3 +80,9 @@ volumes:
   model-cache:
   uploads:
   training-data:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 10.250.0.0/24
