@@ -20,12 +20,12 @@ services:
       context: ..
       dockerfile: docker/backend.Dockerfile
       args:
-        PYTORCH_IMAGE: ${PYTORCH_IMAGE:-pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel}
-        TORCH_ARCH: ${TORCH_ARCH:-8.9}
+        PYTORCH_IMAGE: ${PYTORCH_IMAGE:-dustynv/pytorch:2.1-r35.4.1}
+        TORCH_ARCH: ${TORCH_ARCH:-8.7}
         GROUNDING_MODEL_ID: ${GROUNDING_MODEL_ID:-IDEA-Research/grounding-dino-tiny}
         SAM2_MODEL_ID: ${SAM2_MODEL_ID:-facebook/sam2.1-hiera-base-plus}
         PRELOAD_MODELS: ${PRELOAD_MODELS:-1}
-    image: autoyolo-backend:ubuntu-x86-cuda
+    image: autoyolo-backend:jetson-arm64-cuda
     ports:
       - "8000:8000"
       - "8002:8002"
@@ -54,19 +54,13 @@ services:
       db:
         condition: service_healthy
     restart: unless-stopped
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    runtime: nvidia
 
   frontend:
     build:
       context: ..
       dockerfile: docker/frontend.Dockerfile
-    image: autoyolo-frontend:ubuntu-x86
+    image: autoyolo-frontend:jetson-arm64
     ports:
       - "80:80"
     volumes:

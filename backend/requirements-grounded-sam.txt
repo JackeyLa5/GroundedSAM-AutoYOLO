@@ -1,6 +1,6 @@
 # Grounded-SAM standalone server dependencies
 # Install: pip install -r requirements-grounded-sam.txt
-transformers>=4.57.1
+transformers==4.52.4
 torch
 Pillow
 numpy

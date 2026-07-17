@@ -17,7 +17,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 docker compose -f docker/docker-compose.yml logs -f backend
 ```
 
-**重要**：当前项目部署目标是 Ubuntu x86_64 + NVIDIA CUDA + Docker。不要新增本地启动脚本或跨平台启动入口。
+**重要**：当前项目部署目标是 NVIDIA Jetson Orin（aarch64，JetPack 5.x / L4T 35.x / CUDA 11.4）+ Docker。不要新增本地启动脚本或跨平台启动入口。
 
 ### 前端 (`frontend/`)
 

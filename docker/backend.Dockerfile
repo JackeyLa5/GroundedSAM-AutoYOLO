@@ -1,9 +1,10 @@
-ARG PYTORCH_IMAGE=pytorch/pytorch:2.5.1-cuda12.1-cudnn9-devel
+ARG PYTORCH_IMAGE=dustynv/pytorch:2.1-r35.4.1
 FROM ${PYTORCH_IMAGE}
 
 WORKDIR /app
 
-ARG TORCH_ARCH="8.9"
+# 8.7 = Jetson Orin (AGX/NX/Nano) compute capability
+ARG TORCH_ARCH="8.7"
 ARG GROUNDED_SAM2_REPO=https://github.com/Baijing0817/Grounded-SAM-2.git
 ARG GROUNDED_SAM2_REF=main
 
