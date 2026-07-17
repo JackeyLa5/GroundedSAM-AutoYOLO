@@ -4,7 +4,7 @@ FROM ${PYTORCH_IMAGE}
 WORKDIR /app
 
 ARG TORCH_ARCH="8.9"
-ARG GROUNDED_SAM2_REPO=https://github.com/IDEA-Research/Grounded-SAM-2.git
+ARG GROUNDED_SAM2_REPO=https://github.com/Baijing0817/Grounded-SAM-2.git
 ARG GROUNDED_SAM2_REF=main
 
 ENV DEBIAN_FRONTEND=noninteractive \
