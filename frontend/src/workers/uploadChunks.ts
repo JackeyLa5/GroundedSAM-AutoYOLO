@@ -1,8 +1,9 @@
 /** Web Worker: chunked file upload with resume support. */
 
+import { API_BASE } from "../lib/constants";
+
 const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_RETRIES = 3;
-const API_BASE = "/api/v1";
 
 interface UploadRequest {
   file: File;

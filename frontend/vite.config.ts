@@ -6,6 +6,7 @@ import AutoImport from "unplugin-auto-import/vite";
 import path from "node:path";
 
 export default defineConfig({
+  base: "/GroundedSAM-AutoYOLO/",
   plugins: [
     react(),
     tailwindcss(),
@@ -67,9 +68,10 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": {
+      "/GroundedSAM-AutoYOLO/api": {
         target: `http://localhost:${process.env.VITE_BACKEND_PORT || 8000}`,
         changeOrigin: true,
+        rewrite: (requestPath) => requestPath.replace(/^\/GroundedSAM-AutoYOLO/, ""),
       },
     },
   },

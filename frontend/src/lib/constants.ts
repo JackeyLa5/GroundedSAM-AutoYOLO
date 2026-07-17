@@ -1,4 +1,5 @@
-export const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api/v1";
+export const APP_BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || `${APP_BASE}/api/v1`;
 export const MAX_UPLOAD_SIZE_MB = 20;
 
 // Canvas display limits

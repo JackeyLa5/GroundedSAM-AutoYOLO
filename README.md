@@ -83,7 +83,7 @@ git clone https://github.com/JackeyLa5/GroundedSAM-AutoYOLO.git && cd GroundedSA
 Open:
 
 ```bash
-http://localhost
+http://localhost/GroundedSAM-AutoYOLO/
 ```
 
 If you change frontend code later, rerun the `cd frontend && pnpm install && pnpm build` part before restarting the stack.
@@ -111,7 +111,7 @@ cat backup.sql | docker compose -f docker/docker-compose.yml exec -T db psql -U 
 
 | Service | URL |
 |---------|-----|
-| Frontend | http://localhost |
+| Frontend | http://localhost/GroundedSAM-AutoYOLO/ |
 | Backend | http://localhost:8000 |
 | API Docs | http://localhost:8000/docs |
 

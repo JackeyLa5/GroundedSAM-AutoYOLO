@@ -9,7 +9,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 After launching, access:
-- **Frontend Interface**: http://localhost
+- **Frontend Interface**: http://localhost/GroundedSAM-AutoYOLO/
 - **API Documentation**: http://localhost:8000/docs
 
 ## 2. Upload Images or Videos

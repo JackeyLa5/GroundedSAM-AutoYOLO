@@ -6,6 +6,7 @@ import "./index.css";
 import "./i18n/config";
 
 import { ThemeProvider } from "./components/ThemeProvider";
+import { APP_BASE } from "./lib/constants";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,7 +20,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={APP_BASE}>
         <ThemeProvider>
           <App />
         </ThemeProvider>

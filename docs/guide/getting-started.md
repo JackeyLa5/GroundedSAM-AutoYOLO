@@ -9,7 +9,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 ```
 
 启动后访问：
-- **前端界面**：http://localhost
+- **前端界面**：http://localhost/GroundedSAM-AutoYOLO/
 - **API 文档**：http://localhost:8000/docs
 
 ## 2. 上传图片或视频

@@ -7,6 +7,7 @@
 export {}
 declare global {
   const API_BASE: typeof import('./lib/constants').API_BASE
+  const APP_BASE: typeof import('./lib/constants').APP_BASE
   const Activity: typeof import('react').Activity
   const BOX_COLORS: typeof import('./lib/constants').BOX_COLORS
   const BatchProgress: typeof import('./components/BatchProgress/index').BatchProgress
