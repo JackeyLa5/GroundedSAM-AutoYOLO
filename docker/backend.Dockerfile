@@ -35,7 +35,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     lsof \
     ninja-build \
+    patch \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+# dustynv/pytorch base images don't reliably alias `python` to the python3
+# that has pip/torch installed; force it so the rest of this file can keep
+# using plain `python`.
+RUN ln -sf "$(command -v python3)" /usr/bin/python
 
 RUN python -m pip install --upgrade pip "setuptools>=62.3.0,<75.9" wheel
 
