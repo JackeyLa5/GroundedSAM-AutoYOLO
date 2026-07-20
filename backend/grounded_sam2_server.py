@@ -150,7 +150,10 @@ def segment(
     results = processor.post_process_grounded_object_detection(
         outputs,
         inputs.input_ids,
-        threshold=threshold,
+        # transformers 4.46 (the newest release compatible with Python 3.8)
+        # names this parameter ``box_threshold``; newer releases accept
+        # ``threshold`` instead.
+        box_threshold=threshold,
         text_threshold=mask_threshold,
         target_sizes=[image.size[::-1]],
     )[0]
@@ -359,8 +362,11 @@ def main():
     SERVER_ARGS = parser.parse_args()
 
     server_state["status"] = "starting"
-    httpd = make_server("127.0.0.1", SERVER_ARGS.port, application)
-    logger.info("Grounded-SAM-2 server listening on http://127.0.0.1:%d", SERVER_ARGS.port)
+    # The backend client still calls this service through 127.0.0.1, while
+    # binding all container interfaces makes Compose's published 8002 port
+    # reachable from the Jetson host for diagnostics and integrations.
+    httpd = make_server("0.0.0.0", SERVER_ARGS.port, application)
+    logger.info("Grounded-SAM-2 server listening on http://0.0.0.0:%d", SERVER_ARGS.port)
 
     threading.Thread(target=load_model, args=(server_state,), daemon=True).start()
 

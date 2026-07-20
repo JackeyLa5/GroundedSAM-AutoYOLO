@@ -1,0 +1,23 @@
+# Build overlay.  Use this only on the already-verified, internet-capable Orin:
+# docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml build
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/backend.Dockerfile
+      args:
+        PYTORCH_IMAGE: ${PYTORCH_IMAGE:-dustynv/pytorch:2.1-r35.4.1}
+        TORCH_ARCH: ${TORCH_ARCH:-8.7}
+        GROUNDING_MODEL_ID: IDEA-Research/grounding-dino-tiny
+        SAM2_MODEL_ID: facebook/sam2.1-hiera-small
+        # Files are copied from deploy/models and validated during this build.
+        BUNDLE_MODELS: "1"
+        # The models are already local; do not try to fetch a second copy.
+        PRELOAD_MODELS: "0"
+    image: autoyolo-backend:jetson-arm64-cuda-offline
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/frontend.Dockerfile
+    image: autoyolo-frontend:jetson-arm64-offline

@@ -1,0 +1,73 @@
+# Runtime-only Compose file for an offline Jetson release.
+# It deliberately has no `build:` blocks and no source-code bind mounts.
+# The two inference models are already inside the backend image.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: autolabeling
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d autolabeling"]
+      interval: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    image: autoyolo-backend:jetson-arm64-cuda-offline
+    ports:
+      - "8000:8000"
+      - "8002:8002"
+    shm_size: "8gb"
+    # Jetson GPU device nodes normally belong to the host `video` group.
+    # If needed: export JETSON_GPU_GID="$(stat -c '%g' /dev/nvmap)"
+    group_add:
+      - "${JETSON_GPU_GID:-44}"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/autolabeling
+      PYTHONPATH: /app:/opt/Grounded-SAM-2
+      DEVICE: cuda
+      LOG_DIR: /app/logs
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      GROUNDED_SAM2_GROUNDING_MODEL_ID: /opt/models/grounding-dino-tiny
+      GROUNDED_SAM2_SAM2_MODEL_ID: facebook/sam2.1-hiera-small
+      GROUNDED_SAM2_SAM2_CHECKPOINT_PATH: /opt/models/sam2/sam2.1_hiera_small.pt
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    volumes:
+      - app-logs:/app/logs
+      - model-cache:/app/model
+      - uploads:/app/uploads
+      - training-data:/app/training_runs
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    runtime: nvidia
+
+  frontend:
+    image: autoyolo-frontend:jetson-arm64-offline
+    ports:
+      - "80:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  app-logs:
+  model-cache:
+  uploads:
+  training-data:

@@ -23,7 +23,8 @@ services:
         PYTORCH_IMAGE: ${PYTORCH_IMAGE:-dustynv/pytorch:2.1-r35.4.1}
         TORCH_ARCH: ${TORCH_ARCH:-8.7}
         GROUNDING_MODEL_ID: ${GROUNDING_MODEL_ID:-IDEA-Research/grounding-dino-tiny}
-        SAM2_MODEL_ID: ${SAM2_MODEL_ID:-facebook/sam2.1-hiera-base-plus}
+        # Keep build-time preload aligned with the verified runtime checkpoint.
+        SAM2_MODEL_ID: ${SAM2_MODEL_ID:-facebook/sam2.1-hiera-small}
         PRELOAD_MODELS: ${PRELOAD_MODELS:-1}
     image: autoyolo-backend:jetson-arm64-cuda
     ports:

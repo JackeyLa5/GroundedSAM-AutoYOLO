@@ -88,16 +88,34 @@ COPY --chown=appuser:appuser backend/grounded_sam2_server.py .
 COPY --chown=appuser:appuser backend/alembic.ini .
 COPY --chown=appuser:appuser backend/alembic ./alembic
 
+# A release build can set BUNDLE_MODELS=1 and put the two verified model
+# resources below deploy/models/.  The directory is always copied so the
+# normal development image remains buildable even when it only contains the
+# tracked .gitkeep placeholders.  Actual weight files are intentionally
+# ignored by Git.
+COPY --chown=appuser:appuser deploy/models/ /opt/models/
+
 USER appuser
 
 ARG GROUNDING_MODEL_ID=IDEA-Research/grounding-dino-tiny
-ARG SAM2_MODEL_ID=facebook/sam2.1-hiera-base-plus
+ARG SAM2_MODEL_ID=facebook/sam2.1-hiera-small
 ARG PRELOAD_MODELS=1
+ARG BUNDLE_MODELS=0
+
+ENV GROUNDED_SAM2_BUNDLED_GROUNDING_MODEL_PATH=/opt/models/grounding-dino-tiny \
+    GROUNDED_SAM2_BUNDLED_SAM2_CHECKPOINT_PATH=/opt/models/sam2/sam2.1_hiera_small.pt
 
 ENV GROUNDED_SAM2_GROUNDING_MODEL_ID=${GROUNDING_MODEL_ID} \
     GROUNDED_SAM2_SAM2_MODEL_ID=${SAM2_MODEL_ID}
 
-RUN if [ "${PRELOAD_MODELS}" = "1" ]; then \
+RUN if [ "${BUNDLE_MODELS}" = "1" ]; then \
+        test -s "${GROUNDED_SAM2_BUNDLED_SAM2_CHECKPOINT_PATH}"; \
+        test -f "${GROUNDED_SAM2_BUNDLED_GROUNDING_MODEL_PATH}/config.json"; \
+        test -f "${GROUNDED_SAM2_BUNDLED_GROUNDING_MODEL_PATH}/preprocessor_config.json"; \
+        test -f "${GROUNDED_SAM2_BUNDLED_GROUNDING_MODEL_PATH}/model.safetensors" \
+          -o -f "${GROUNDED_SAM2_BUNDLED_GROUNDING_MODEL_PATH}/pytorch_model.bin"; \
+    fi \
+    && if [ "${PRELOAD_MODELS}" = "1" ]; then \
         python -c "import os; from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor; from sam2.build_sam import build_sam2_hf; grounding_model_id = os.environ['GROUNDED_SAM2_GROUNDING_MODEL_ID']; sam2_model_id = os.environ['GROUNDED_SAM2_SAM2_MODEL_ID']; print(f'Preloading GroundingDINO model: {grounding_model_id}'); AutoProcessor.from_pretrained(grounding_model_id); AutoModelForZeroShotObjectDetection.from_pretrained(grounding_model_id); print(f'Preloading SAM2 model: {sam2_model_id}'); build_sam2_hf(sam2_model_id, device='cpu'); print('Grounded-SAM model preload complete')" ; \
     fi
 

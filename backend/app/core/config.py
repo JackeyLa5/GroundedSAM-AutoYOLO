@@ -6,9 +6,10 @@ from pathlib import Path
 from pydantic_settings import BaseSettings
 
 # ── CUDA memory allocator tuning ───────────────────
-# Use expandable segments (PyTorch 2.1+) for dynamic memory management;
-# much better than the legacy max_split_size_mb for varying tensor sizes
-os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+# expandable_segments relies on CUDA virtual memory management APIs that
+# Jetson/Tegra's driver (JetPack 5.x, CUDA 11.4) doesn't fully support; enabling
+# it there makes the allocator fail with a misleading "CUDA driver error: out
+# of memory" even when memory is free. Leave the allocator on its default.
 
 
 class Settings(BaseSettings):

@@ -35,3 +35,13 @@ docs/src/
 .playwright-mcp/
 test-results/
 .cli_pids.json
+
+# Offline-release model resources are copied into the Docker build context but
+# are intentionally never committed to source control.
+/deploy/models/sam2/*
+!/deploy/models/sam2/.gitkeep
+/deploy/models/grounding-dino-tiny/*
+!/deploy/models/grounding-dino-tiny/.gitkeep
+
+# Generated offline delivery archives can be many gigabytes.
+/dist/

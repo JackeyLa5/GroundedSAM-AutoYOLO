@@ -19,6 +19,8 @@
 | `backend/app/services/**/*.py` | 对仍在使用 `list[...]`、`dict[...]` 或 `T \| None` 的模块启用 `from __future__ import annotations` | 避免 Python 3.8 在导入普通函数时立即计算 Python 3.9+ 风格的类型注解 |
 | `backend/alembic/versions/*.py` | 对迁移脚本启用 `from __future__ import annotations` | Alembic 会执行迁移模块的 `str \| None` 等版本元数据注解；Python 3.8 否则会在数据库初始化前失败 |
 | `backend/app/core/async_utils.py` 及调用处 | 用 `run_in_executor()` 封装替代 `asyncio.to_thread()` | `asyncio.to_thread()` 仅从 Python 3.9 起提供；Jetson 的 Python 3.8 需要使用等价的默认线程池调用 |
+| `backend/grounded_sam2_server.py` | GroundingDINO 后处理参数 `threshold` 改为 `box_threshold` | Python 3.8 兼容的 `transformers==4.46.3` 使用 `box_threshold` 参数名；传入新版 API 名称会使实际检测返回 HTTP 500 |
+| `backend/grounded_sam2_server.py` | Grounded-SAM2 的 WSGI 服务由 `127.0.0.1` 改为监听 `0.0.0.0` | Compose 已发布 `8002:8002`；仅监听容器 loopback 时宿主机访问该端口会被重置，backend 内部仍可通过 `127.0.0.1` 调用 |
 | `docker/docker-compose.yml` | 移除 frontend 对 `frontend/dist` 的 bind mount | Dockerfile 已将构建产物复制进 nginx 镜像。空的宿主机 `dist` 会覆盖这些文件并导致 nginx 返回 403 |
 | `docker/frontend.Dockerfile` / `docker/docker-compose.yml` | frontend 健康检查从 `localhost` 改为 `127.0.0.1` | Alpine 中 `localhost` 可能优先解析为 IPv6 `::1`，而 nginx 默认只监听 IPv4，导致网页可访问但健康检查误报失败 |
 | `docker/docker-compose.yml` | 镜像 tag `ubuntu-x86*` → `jetson-arm64*`；GPU 挂载从 `deploy.resources.reservations.devices`（driver: nvidia）改为 `runtime: nvidia` | Jetson 走 `nvidia-container-runtime`，不是 x86 独立显卡那套 CDI/device-reservation 语法 |
@@ -71,11 +73,17 @@ volumes:
   - /home/galbot/sam2/checkpoints:/models/sam2:ro
 ```
 
-⚠️ 注意：`docker/backend.Dockerfile` 里 `PRELOAD_MODELS=1` 那一步（构建期间的模型预热）**没有**改成走本地 checkpoint，仍然是硬编码调用 `build_sam2_hf()` 联网下载默认模型（见该 Dockerfile 的最后一个 `RUN` 步骤）。这是刻意的：Dockerfile 要保持对没有本地 checkpoint 的机器人也通用，预热这一步多下载一次不影响正确性，只是稍微浪费构建时间/带宽。真正生效的是运行时 `grounded_sam2_server.py` 里的本地 checkpoint 逻辑。
+⚠️ 注意：常规 `docker/backend.Dockerfile` 里 `PRELOAD_MODELS=1` 的构建期间预热仍会联网调用 `build_sam2_hf()`；现在其默认型号已对齐为 `facebook/sam2.1-hiera-small`，但它仍不会使用宿主机的本地 checkpoint。真正生效的是运行时 `grounded_sam2_server.py` 的本地 checkpoint 逻辑。离线内置模型发布则使用 `deploy/docker-compose.build.yml`，它会关闭预热、复制并校验本地模型文件，因此不会再次下载模型。
 
-### GroundingDINO（暂未接，继续联网下载）
+### 模型内置的离线发布（可选）
 
-代码里目前**没有**类似 SAM2 那种"本地 checkpoint 路径"开关，`AutoProcessor.from_pretrained()` / `AutoModelForZeroShotObjectDetection.from_pretrained()` 固定走 Hugging Face（或其本地缓存）。当前先保持联网下载，如果以后要接本地文件，需要准备一整套 HF 仓库文件（不是单个权重文件）：
+若要把已验证的 SAM2 与 GroundingDINO 都打进 backend 镜像、再交付给新 Orin，请使用项目根目录的 [`deploy/README_ZH.md`](../deploy/README_ZH.md)。这套部署配置与当前开发 Compose 独立，不会改变这里的宿主机 checkpoint 挂载方式。
+
+### GroundingDINO（离线发布已支持）
+
+常规开发 Compose 仍使用模型 ID `IDEA-Research/grounding-dino-tiny`，通过 Hugging Face 下载或读取缓存。离线内置模型发布时，`deploy/docker-compose.yml` 会把 `GROUNDED_SAM2_GROUNDING_MODEL_ID` 指向镜像内的 `/opt/models/grounding-dino-tiny`，并开启离线模式。因此新机器人不需要联网下载它。
+
+GroundingDINO 不是单个 checkpoint，必须准备一整套 HF 仓库文件：
 
 - `config.json`
 - `preprocessor_config.json`
@@ -87,7 +95,7 @@ volumes:
 ## 四、未解决问题
 
 - **`ModuleNotFoundError: No module named 'sam2'`**：模型预热以 `appuser` 身份运行，而 SAM2 的可编辑安装实际引用 `/opt/Grounded-SAM-2`。Dockerfile 和 Compose 均应将该目录保留在 `PYTHONPATH`（`/app:/opt/Grounded-SAM-2`）；Dockerfile 也会在安装后立即验证 `import sam2`。
-- **本地开发机 ↔ 机器人代码同步方式待定**：目前改动都在这台 x86 开发机的本地 git 仓库里，还没推送到 GitHub（`git status` 显示领先 origin/main 若干个提交），机器人是怎么拿到这些改动的还没确认（git pull？rsync？scp？）。在这个问题解决之前，每次改完文件都要先确认机器人上跑的是不是最新版本，避免像上面这次一样，重新构建后"看起来一样的报错"其实是因为改动根本没同步过去。
+- **本地开发机 ↔ 机器人代码同步方式待定**：开发模式下每次改完仍要确认机器人获取了最新源码。离线发布包可规避这个问题：应用代码已经在 backend 镜像内，新机器人只导入同一份已验证镜像，不再同步源码。
 
 ## 五、新机器人首次部署流程
 
@@ -156,7 +164,7 @@ docker compose -f docker/docker-compose.yml logs -f backend
 
 - `dustynv/pytorch:2.1-r35.4.1` 镜像体积较大，下载视网络情况可能较慢。
 - GroundingDINO / SAM2 的 CUDA 扩展会在构建时用 `ninja` 现场编译，Orin 的 CPU 编译速度明显慢于 x86 开发机，构建卡住不动是正常现象，不代表失败。
-- `PRELOAD_MODELS=1` 会在构建期间从 Hugging Face 下载 `grounding-dino-tiny` 和 `sam2.1-hiera-base-plus`，如遇限流/需要私有模型，设置 `HF_TOKEN` 环境变量。
+- 常规 `PRELOAD_MODELS=1` 会在构建期间从 Hugging Face 下载 `grounding-dino-tiny` 和 `sam2.1-hiera-small`，如遇限流/需要私有模型，设置 `HF_TOKEN` 环境变量。离线发布模式会关闭这一步，并把两种模型预先复制进镜像。
 
 #### Docker Hub 基础镜像拉取长时间无进度
 
@@ -186,6 +194,6 @@ hostname -I   # 查看机器人 IP
 
 ## 六、其他排查提示
 
-- **是否需要在机器人上手动 clone sam2 / GroundingDINO 仓库？不需要。** `docker/backend.Dockerfile` 构建镜像时会自动 `git clone` `Baijing0817/Grounded-SAM-2`（见一、表格第 13 行）到 `/opt/Grounded-SAM-2`，并对其根目录和 `grounding_dino/` 子目录分别执行 `pip install -e .`，一次性提供 `sam2` 和 `grounding_dino` 两个包（editable 安装）。`backend/requirements.txt` 里的 `sam2>=1.0.0` 那一行在 Jetson 构建时会被过滤掉（不从 PyPI 装），只是给非 Jetson 环境占位用的，真正生效的是 git clone 出来的这份代码。机器人上唯一要手动准备的是**权重文件**而不是仓库代码：SAM2 需要把 `sam2.1_hiera_small.pt` 放到 `/home/galbot/sam2/checkpoints/`（见"三、本地模型文件"），GroundingDINO 目前继续联网从 Hugging Face 下载（模型 ID `IDEA-Research/grounding-dino-tiny`），暂无需手动下载文件。
+- **是否需要在机器人上手动 clone sam2 / GroundingDINO 仓库？不需要。** `docker/backend.Dockerfile` 构建镜像时会自动 `git clone` `Baijing0817/Grounded-SAM-2`（见一、表格第 13 行）到 `/opt/Grounded-SAM-2`，并对其根目录和 `grounding_dino/` 子目录分别执行 `pip install -e .`，一次性提供 `sam2` 和 `grounding_dino` 两个包（editable 安装）。`backend/requirements.txt` 里的 `sam2>=1.0.0` 那一行在 Jetson 构建时会被过滤掉（不从 PyPI 装），只是给非 Jetson 环境占位用的，真正生效的是 git clone 出来的这份代码。常规开发部署时，机器人需要准备 SAM2 权重，GroundingDINO 从 Hugging Face 下载或读取缓存；使用 `deploy/` 离线发布包时，二者都已经在 backend 镜像内，新机器人无需准备模型文件或 clone 仓库。
 - `shm_size: "8gb"`（`docker/docker-compose.yml`）：Jetson 是 CPU/GPU 统一内存架构，如果是 Orin Nano（8GB 内存）这种低内存型号，可能需要调低这个值，否则容器启动可能受影响。
-- 以后凡是要在**已经 source 过 ROS 环境**的终端里执行 `curl` / `wget` / `apt` / `pip` 这类依赖系统库或联网的命令，遇到奇怪的 "no version information" 警告或 SSL 证书错误，优先怀疑 `LD_LIBRARY_PATH` 被 `/opt/ros/...` 或机器人 SDK 路径污染，用 `LD_LIBRARY_PATH= <command>` 临时清空排查。
+- 以后凡是要在**已经 source 过 ROS 环境**的终端里执行 `curl` / `wget` / `apt` / `pip` 这类依赖系统库或联网的命令，遇到奇怪的 "no version information" 警告或 SSL 证书错误，优先怀疑 `LD_LIBRARY_PATH` 被 `/opt/ros/...` 或机器人 SDK 路径污染，用 `LD_LIBRARY_PATH= <command>` 临时清空排查。离线包在目标机不需要执行 `curl`、`pip` 或模型下载，因此可避开大部分这一类问题；只有宿主机安装 Docker 等系统组件时仍可能遇到。
