@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 import time
 
+from ..core.async_utils import run_blocking
 from ..core.exceptions import AppError
 from ..models.detection import Detection, ModelType
 from ..repositories.detection import DetectionRepository
@@ -37,7 +37,7 @@ async def process_detection(
 
     # 3. Execute inference
     try:
-        result = await asyncio.to_thread(strategy.detect, filepath, categories, **strategy_kwargs)
+        result = await run_blocking(strategy.detect, filepath, categories, **strategy_kwargs)
     except AppError:
         raise
     except Exception as exc:

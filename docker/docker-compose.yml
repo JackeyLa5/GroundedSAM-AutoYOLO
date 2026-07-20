@@ -76,8 +76,14 @@ services:
     image: autoyolo-frontend:jetson-arm64
     ports:
       - "80:80"
-    volumes:
-      - ../frontend/dist:/usr/share/nginx/html:ro
+    # nginx listens on IPv4; localhost may resolve to ::1 in Alpine and make
+    # the inherited image health check fail even though the site is reachable.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
     depends_on:
       - backend
     restart: unless-stopped

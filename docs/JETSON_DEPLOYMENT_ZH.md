@@ -18,10 +18,13 @@
 | `backend/app/models/{detection,train,video}.py` | SQLAlchemy ORM 字段由 `Mapped[list[T]]` / `Mapped[T \| None]` 改为 `Mapped[List[T]]` / `Mapped[Optional[T]]` | SQLAlchemy 会在 Python 3.8 运行时解析 ORM 注解；内置泛型与 `\|` 联合类型在该版本不可用，会导致后端启动失败 |
 | `backend/app/services/**/*.py` | 对仍在使用 `list[...]`、`dict[...]` 或 `T \| None` 的模块启用 `from __future__ import annotations` | 避免 Python 3.8 在导入普通函数时立即计算 Python 3.9+ 风格的类型注解 |
 | `backend/alembic/versions/*.py` | 对迁移脚本启用 `from __future__ import annotations` | Alembic 会执行迁移模块的 `str \| None` 等版本元数据注解；Python 3.8 否则会在数据库初始化前失败 |
+| `backend/app/core/async_utils.py` 及调用处 | 用 `run_in_executor()` 封装替代 `asyncio.to_thread()` | `asyncio.to_thread()` 仅从 Python 3.9 起提供；Jetson 的 Python 3.8 需要使用等价的默认线程池调用 |
+| `docker/docker-compose.yml` | 移除 frontend 对 `frontend/dist` 的 bind mount | Dockerfile 已将构建产物复制进 nginx 镜像。空的宿主机 `dist` 会覆盖这些文件并导致 nginx 返回 403 |
+| `docker/frontend.Dockerfile` / `docker/docker-compose.yml` | frontend 健康检查从 `localhost` 改为 `127.0.0.1` | Alpine 中 `localhost` 可能优先解析为 IPv6 `::1`，而 nginx 默认只监听 IPv4，导致网页可访问但健康检查误报失败 |
 | `docker/docker-compose.yml` | 镜像 tag `ubuntu-x86*` → `jetson-arm64*`；GPU 挂载从 `deploy.resources.reservations.devices`（driver: nvidia）改为 `runtime: nvidia` | Jetson 走 `nvidia-container-runtime`，不是 x86 独立显卡那套 CDI/device-reservation 语法 |
 | `CLAUDE.md` | 部署目标说明同步更新为 Jetson Orin / JetPack 5.x | 保持文档与实际一致 |
 
-前端（`frontend/`）无需改动：`API_BASE` 默认走相对路径 `/api/v1`，由 `docker/nginx.conf` 反向代理到后端容器，跟机器人 IP 无关，不需要为每台机器人单独构建。
+前端（`frontend/`）无需改动：`API_BASE` 默认走相对路径 `/api/v1`，由 `docker/nginx.conf` 反向代理到后端容器，跟机器人 IP 无关。前端静态文件由 Dockerfile 在构建时写入 nginx 镜像，不需要在机器人宿主机额外生成或挂载 `frontend/dist`。
 
 ## 二、Python 3.8 兼容性（`requirements.txt` 版本下限踩坑记录）
 
@@ -142,20 +145,7 @@ docker info | grep -i runtime   # 应该能看到 "nvidia"
 
 没有的话检查 `/etc/docker/daemon.json` 是否有 `nvidia` runtime 配置（一般 JetPack SDK Manager 已经配好）。
 
-### 4. 构建前端静态文件
-
-`docker-compose.yml` 会用 host 上的 `frontend/dist` 覆盖镜像内构建结果（bind mount），所以启动前需要保证这个目录存在且是最新构建：
-
-```bash
-cd frontend
-pnpm install
-pnpm run build
-cd ..
-```
-
-（也可以在别的机器上构建好 `frontend/dist` 再拷贝到机器人上，静态产物和架构无关。）
-
-### 5. 构建并启动
+### 4. 构建并启动
 
 ```bash
 docker compose -f docker/docker-compose.yml up -d --build

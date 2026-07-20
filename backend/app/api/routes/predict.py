@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse
 
 from ...core.config import settings
+from ...core.async_utils import run_blocking
 from ...core.database import SessionLocal, get_db
 from ...core.gpu_memory import get_memory_manager
 from ...models.train import TrainingJob
@@ -210,7 +211,7 @@ async def validate_mjpeg_external(
         buf, frame_num = b"", 0
         try:
             while True:
-                chunk = await asyncio.to_thread(proc.stdout.read, 4096)
+                chunk = await run_blocking(proc.stdout.read, 4096)
                 if not chunk:
                     break
                 buf += chunk
@@ -219,7 +220,7 @@ async def validate_mjpeg_external(
                     continue
                 jpg = buf[: end + 2]
                 buf = buf[end + 2 :]
-                annotated = await asyncio.to_thread(
+                annotated = await run_blocking(
                     draw_frame,
                     model_path,
                     jpg,
@@ -298,7 +299,7 @@ async def validate_mjpeg(
 
         try:
             while True:
-                chunk = await asyncio.to_thread(proc.stdout.read, 4096)
+                chunk = await run_blocking(proc.stdout.read, 4096)
                 if not chunk:
                     break
                 buf += chunk
@@ -308,7 +309,7 @@ async def validate_mjpeg(
                 jpg = buf[: end + 2]
                 buf = buf[end + 2 :]
 
-                annotated = await asyncio.to_thread(
+                annotated = await run_blocking(
                     draw_frame,
                     job.model_path,
                     jpg,
@@ -392,7 +393,7 @@ async def predict_video_stream(
 
         try:
             while True:
-                chunk = await asyncio.to_thread(proc.stdout.read, 4096)
+                chunk = await run_blocking(proc.stdout.read, 4096)
                 if not chunk:
                     break
                 buf += chunk
@@ -405,7 +406,7 @@ async def predict_video_stream(
                 if start_time is None:
                     start_time = asyncio.get_running_loop().time()
 
-                result = await asyncio.to_thread(
+                result = await run_blocking(
                     predict_frame,
                     job.model_path,
                     jpg_data,
