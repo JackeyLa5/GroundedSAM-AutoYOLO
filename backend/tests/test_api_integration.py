@@ -8,6 +8,8 @@ Data accuracy assertions go beyond HTTP status checks:
 - Timestamps and UUIDs well-formed
 """
 
+from __future__ import annotations
+
 import os
 import time
 

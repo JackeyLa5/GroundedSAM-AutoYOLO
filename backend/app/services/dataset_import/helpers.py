@@ -1,5 +1,7 @@
 """Shared helpers for dataset import parsers."""
 
+from __future__ import annotations
+
 import logging
 import shutil
 import uuid

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -17,7 +18,7 @@ class TrainingJob(Base):
         primary_key=True,
         default=uuid.uuid4,
     )
-    name: Mapped[str | None] = mapped_column(String(128), nullable=True, default=None)
+    name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, default=None)
     model_variant: Mapped[str] = mapped_column(String(32), default="yolo26n")
     epochs: Mapped[int] = mapped_column(Integer, default=100)
     imgsz: Mapped[int] = mapped_column(Integer, default=640)
@@ -25,25 +26,25 @@ class TrainingJob(Base):
     train_ratio: Mapped[float] = mapped_column(Float, default=0.7)
     val_ratio: Mapped[float] = mapped_column(Float, default=0.2)
     task_type: Mapped[str] = mapped_column(String(16), default="segment")
-    class_map: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    class_map: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32),
         default="pending",
     )
-    metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    model_path: Mapped[str | None] = mapped_column(Text, nullable=True)
-    onnx_path: Mapped[str | None] = mapped_column(Text, nullable=True)
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    metrics: Mapped[Optional[Dict]] = mapped_column(JSON, nullable=True)
+    model_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    onnx_path: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
     )
-    completed_at: Mapped[datetime | None] = mapped_column(
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )
 
-    detection_links: Mapped[list[TrainingDetection]] = relationship(
+    detection_links: Mapped[List["TrainingDetection"]] = relationship(
         "TrainingDetection",
         back_populates="training_job",
         cascade="all, delete-orphan",

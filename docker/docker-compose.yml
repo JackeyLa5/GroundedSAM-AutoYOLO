@@ -30,9 +30,14 @@ services:
       - "8000:8000"
       - "8002:8002"
     shm_size: "8gb"
+    # Jetson GPU device nodes are normally owned by the host's `video` group
+    # (GID 44).  backend runs as appuser, so it needs this supplementary group.
+    # Override JETSON_GPU_GID if `stat -c '%g' /dev/nvmap` reports another GID.
+    group_add:
+      - "${JETSON_GPU_GID:-44}"
     environment:
       DATABASE_URL: postgresql+psycopg2://postgres:postgres@db:5432/autolabeling
-      PYTHONPATH: /app
+      PYTHONPATH: /app:/opt/Grounded-SAM-2
       HF_HOME: /home/appuser/.cache/huggingface
       HF_TOKEN: ${HF_TOKEN:-}
       DEVICE: cuda
@@ -40,6 +45,10 @@ services:
       WATCHFILES_FORCE_POLLING: "true"
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      # Local SAM2 checkpoint (avoids downloading from Hugging Face at runtime).
+      # Must match the checkpoint's actual architecture — see docs/JETSON_DEPLOYMENT_ZH.md.
+      GROUNDED_SAM2_SAM2_MODEL_ID: facebook/sam2.1-hiera-small
+      GROUNDED_SAM2_SAM2_CHECKPOINT_PATH: /models/sam2/sam2.1_hiera_small.pt
     volumes:
       - ../backend/app:/app/app
       - ../backend/grounded_sam2_server.py:/app/grounded_sam2_server.py
@@ -49,7 +58,11 @@ services:
       - model-cache:/app/model
       - uploads:/app/uploads
       - training-data:/app/training_runs
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+      - /home/galbot/sam2/checkpoints:/models/sam2:ro
+    # The Jetson deployment runs the API as a stable single worker.  `--reload`
+    # is for local development and can leave a watcher parent alive while its
+    # application child repeatedly crashes or reloads.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
     depends_on:
       db:
         condition: service_healthy

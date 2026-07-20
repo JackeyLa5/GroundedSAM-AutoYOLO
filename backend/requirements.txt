@@ -3,6 +3,8 @@ uvicorn[standard]>=0.30.0
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
 pydantic-settings>=2.6.0
+# Lets Pydantic evaluate modern annotations such as list[str] on Python 3.8.
+eval-type-backport>=0.4.0
 transformers==4.46.3
 torch>=2.1.0
 Pillow>=10.0.0
@@ -15,4 +17,3 @@ alembic>=1.14.0
 lmdb>=1.4.0
 peft>=0.12.0
 sam2>=1.0.0
-decord>=0.6.0; sys_platform == 'linux'

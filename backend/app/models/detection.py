@@ -3,6 +3,7 @@ from __future__ import annotations
 import enum
 import uuid
 from datetime import datetime, timezone
+from typing import List, Optional
 
 from sqlalchemy import JSON, DateTime, Enum, Float, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,16 +36,16 @@ class Detection(Base):
     )
     image_path: Mapped[str] = mapped_column(Text, nullable=False)
     image_name: Mapped[str] = mapped_column(String(512), nullable=False)
-    categories: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    categories: Mapped[List[str]] = mapped_column(JSON, nullable=False, default=list)
     model_name: Mapped[str] = mapped_column(String(256), default="Grounded-SAM")
-    model_type: Mapped[ModelType | None] = mapped_column(
+    model_type: Mapped[Optional[ModelType]] = mapped_column(
         Enum(ModelType, values_callable=lambda x: [e.value for e in x]), nullable=True
     )
     image_width: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     image_height: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    elapsed_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    filter_mode: Mapped[FilterMode | None] = mapped_column(Enum(FilterMode), nullable=True)
-    filter_nms_iou: Mapped[float | None] = mapped_column(Float, nullable=True)
+    elapsed_ms: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    filter_mode: Mapped[Optional[FilterMode]] = mapped_column(Enum(FilterMode), nullable=True)
+    filter_nms_iou: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     status: Mapped[DetectionStatus] = mapped_column(
         Enum(DetectionStatus),
         default=DetectionStatus.completed,
@@ -54,7 +55,7 @@ class Detection(Base):
         default=lambda: datetime.now(timezone.utc),
     )
 
-    boxes: Mapped[list[DetectionBox]] = relationship(
+    boxes: Mapped[List["DetectionBox"]] = relationship(
         "DetectionBox",
         back_populates="detection",
         cascade="all, delete-orphan",
@@ -84,8 +85,8 @@ class DetectionBox(Base):
     y1: Mapped[int] = mapped_column(Integer, nullable=False)
     x2: Mapped[int] = mapped_column(Integer, nullable=False)
     y2: Mapped[int] = mapped_column(Integer, nullable=False)
-    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
-    mask_polygon: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    confidence: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    mask_polygon: Mapped[Optional[List]] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

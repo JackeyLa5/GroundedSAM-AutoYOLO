@@ -1,5 +1,7 @@
 """Apply filter mode to a list of box dicts."""
 
+from __future__ import annotations
+
 import re
 
 

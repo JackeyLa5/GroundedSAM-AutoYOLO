@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
+from typing import List, Optional
 
 from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,11 +20,11 @@ class Video(Base):
     )
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     file_name: Mapped[str] = mapped_column(String(512), nullable=False)
-    duration: Mapped[float | None] = mapped_column(Float, nullable=True)
-    fps: Mapped[float | None] = mapped_column(Float, nullable=True)
-    total_frames: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    fps: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    total_frames: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    width: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    height: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     status: Mapped[str] = mapped_column(
         String(32),
         default="uploaded",
@@ -33,7 +34,7 @@ class Video(Base):
         default=lambda: datetime.now(timezone.utc),
     )
 
-    keyframes: Mapped[list[KeyFrame]] = relationship(
+    keyframes: Mapped[List["KeyFrame"]] = relationship(
         "KeyFrame",
         back_populates="video",
         cascade="all, delete-orphan",
@@ -61,7 +62,7 @@ class KeyFrame(Base):
     frame_number: Mapped[int] = mapped_column(Integer, nullable=False)
     timestamp_seconds: Mapped[float] = mapped_column(Float, nullable=False)
     image_path: Mapped[str] = mapped_column(Text, nullable=False)
-    scene_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    scene_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
