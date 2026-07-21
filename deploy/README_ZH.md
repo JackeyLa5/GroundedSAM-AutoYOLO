@@ -88,14 +88,47 @@ cd autoyolo-jetson-offline-日期时间
 
 脚本会检查 arm64、Docker、Compose V2、`/dev/nvmap`、NVIDIA Container Runtime 和镜像校验值；通过后自动写入该机器实际的 `JETSON_GPU_GID`、导入镜像并启动服务。
 
-预期 backend、db、frontend 均为 `healthy`。验证 GPU：
+容器刚启动时看到 `health: starting` 是正常现象。等待约 40 秒，再执行：
+
+```bash
+docker compose ps
+```
+
+预期 backend、db、frontend 均为 `healthy`。
+
+### 4. 完整验收：GPU、接口和模型
+
+验证 GPU：
 
 ```bash
 docker compose exec backend \
   python -c 'import torch; print(torch.version.cuda); print(torch.cuda.is_available())'
 ```
 
-预期输出 CUDA `11.4` 与 `True`。从与 Orin 同一网络的电脑浏览器访问：
+预期输出 CUDA `11.4` 与 `True`。
+
+验证后端接口：
+
+```bash
+docker compose exec backend \
+  python -c "import urllib.request; print(urllib.request.urlopen('http://127.0.0.1:8000/api/health').read().decode())"
+```
+
+预期包含：
+
+```json
+{"status":"ok","version":"0.1.0"}
+```
+
+验证两种模型确实已在 backend 镜像内：
+
+```bash
+docker compose exec backend sh -lc \
+  'ls -lh /opt/models/sam2/sam2.1_hiera_small.pt && \
+   ls /opt/models/grounding-dino-tiny/config.json'
+```
+
+全部通过后，从与 Orin 同一网络的电脑浏览器访问：
 
 ```text
 http://<Orin-IP>/
