@@ -37,4 +37,4 @@ fi
 
 echo
 echo "Model resources are ready in: ${models_dir}"
-echo "Next: cd ${project_root} && docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.build.yml build"
+echo "Next: cd ${project_root} && ./deploy/export-release.sh"

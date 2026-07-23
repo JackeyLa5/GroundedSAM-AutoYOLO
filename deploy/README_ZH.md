@@ -79,6 +79,71 @@ docker compose -f docker/docker-compose.yml up -d
 
 ## 三、新 Orin：导入并启动
 
+### 0. 全新机器人：先确认宿主机前置环境
+
+如果这台 Orin 是第一次部署、还没跑过任何 Docker 项目，`install-on-orin.sh` 依赖的宿主机环境（Docker、Compose V2、NVIDIA Container Runtime）不一定齐全，建议先手动确认一遍，省得脚本中途报错反复排查：
+
+```bash
+cat /etc/nv_tegra_release        # 确认是 JetPack 5.x / L4T 35.x
+docker -v                        # 确认 Docker 本体已装（JetPack SDK Manager 通常已带）
+docker compose version           # 大概率会报错，见下一步
+```
+
+**没有 `docker compose` 子命令**：Jetson 出厂/SDK Manager 装的 Docker 往往只有引擎本体，没有 Compose V2 插件，需要单独装：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y docker-compose-plugin
+```
+
+如果 apt 提示找不到 `docker-compose-plugin` 这个包，说明当前 apt 源里没有 Docker 官方仓库，需要先加上：
+
+```bash
+sudo rm -f /usr/share/keyrings/docker-archive-keyring.gpg
+
+# ⚠️ 如果这台机器人的终端 source 过 ROS（LD_LIBRARY_PATH 里有 /opt/ros/.../lib、
+# /data/galbot/lib 之类的路径），curl 会被这些自带的旧版 libcurl.so 顶替，
+# 导致 SSL 证书校验失败（报 "no version information" / 证书错误）。
+# 用 LD_LIBRARY_PATH= 临时清空该变量即可，只影响这一条命令，不影响机器人程序运行。
+LD_LIBRARY_PATH= curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /tmp/docker.gpg
+sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg /tmp/docker.gpg
+ls -la /usr/share/keyrings/docker-archive-keyring.gpg   # 确认文件不是 0 字节
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+```
+
+装插件前**先不加 `-y` 跑一遍**，确认它只装 `docker-compose-plugin`（可能附带 `docker-buildx-plugin`），**没有**牵连升级/降级 `docker-ce`、`containerd` 等核心包（那些是 JetPack 已经配好 NVIDIA runtime 的部分，被 apt 顺带升级有风险）：
+
+```bash
+sudo apt-get install docker-compose-plugin   # 看清单，确认没有 docker-ce/containerd 再输入 y
+docker compose version                        # 验证装好
+```
+
+> 常见无害警告：`APT had planned for dpkg to do more than it reported back ... nvidia-l4t-bootloader/nvidia-l4t-kernel` —— 这只是 dpkg 触发器计数提示，只要这两个包不在实际安装/升级列表里就可以忽略。
+
+**确认 NVIDIA Container Runtime 已注册**：
+
+```bash
+docker info | grep -i runtime   # 应该能看到 "nvidia"
+```
+
+没有的话检查 `/etc/docker/daemon.json` 是否有 `nvidia` runtime 配置（一般 JetPack SDK Manager 已经配好）。
+
+> 报 `permission denied while trying to connect to the Docker daemon socket`：当前用户不在 `docker` 组，跟 nvidia runtime 无关。执行：
+> ```bash
+> sudo usermod -aG docker $USER
+> newgrp docker   # 让当前终端立即生效，无需重新登录
+> ```
+> **注意**：`newgrp` 只对执行它的那一个终端会话生效。如果你在另一个终端窗口（例如运行 `install-on-orin.sh` 的那个）里仍然报 nvidia runtime 未注册，先确认是不是那个窗口没有走过 `newgrp`／重新登录——`docker info` 权限被拒绝时脚本里的 `2>/dev/null` 会吞掉报错，容易被误判成"runtime 未注册"。
+
+以上都确认无误后，再继续下面的导入步骤。
+
+### 1. 复制并运行安装脚本
+
 把整个 `dist/autoyolo-jetson-offline-日期时间` 文件夹复制到新 Orin，然后执行：
 
 ```bash
@@ -96,7 +161,7 @@ docker compose ps
 
 预期 backend、db、frontend 均为 `healthy`。
 
-### 4. 完整验收：GPU、接口和模型
+### 2. 完整验收：GPU、接口和模型
 
 验证 GPU：
 
