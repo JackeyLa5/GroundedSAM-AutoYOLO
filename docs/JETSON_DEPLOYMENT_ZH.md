@@ -153,6 +153,13 @@ docker info | grep -i runtime   # 应该能看到 "nvidia"
 
 没有的话检查 `/etc/docker/daemon.json` 是否有 `nvidia` runtime 配置（一般 JetPack SDK Manager 已经配好）。
 
+> 报 `permission denied while trying to connect to the Docker daemon socket`：当前用户不在 `docker` 组，跟 nvidia runtime 无关。执行：
+> ```bash
+> sudo usermod -aG docker $USER
+> newgrp docker   # 让当前终端立即生效，无需重新登录
+> ```
+> **注意**：`newgrp` 只对执行它的那一个终端会话生效。如果你在另一个终端窗口（例如运行 `install-on-orin.sh` 的那个）里仍然报 nvidia runtime 未注册，先确认是不是那个窗口没有走过 `newgrp`／重新登录——`docker info` 权限被拒绝时脚本里的 `2>/dev/null` 会吞掉报错，容易被误判成"runtime 未注册"。
+
 ### 4. 构建并启动
 
 ```bash

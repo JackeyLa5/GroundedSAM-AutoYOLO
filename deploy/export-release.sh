@@ -30,7 +30,7 @@ docker save -o "${release_dir}/images/autoyolo-jetson-images.tar" \
     autoyolo-backend:jetson-arm64-cuda-offline \
     autoyolo-frontend:jetson-arm64-offline \
     postgres:16-alpine
-sha256sum "${release_dir}/images/autoyolo-jetson-images.tar" > "${release_dir}/images/SHA256SUMS"
+(cd "${release_dir}/images" && sha256sum autoyolo-jetson-images.tar > SHA256SUMS)
 
 cp "${script_dir}/docker-compose.yml" "${release_dir}/docker-compose.yml"
 cp "${script_dir}/README_ZH.md" "${release_dir}/README_ZH.md"
