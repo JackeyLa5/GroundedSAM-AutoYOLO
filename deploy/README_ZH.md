@@ -101,6 +101,11 @@ sudo apt-get install -y docker-compose-plugin
 ```bash
 sudo rm -f /usr/share/keyrings/docker-archive-keyring.gpg
 
+# ⚠️ 先确认 curl 已安装且能正常执行：`curl: command not found` 会让下面这条
+# 下载命令静默失败（不下载 gpg key），进而导致 keyring 文件是空的，
+# apt-get update 报 NO_PUBKEY，最终还是找不到 docker-compose-plugin。
+sudo apt-get install -y curl
+
 # ⚠️ 如果这台机器人的终端 source 过 ROS（LD_LIBRARY_PATH 里有 /opt/ros/.../lib、
 # /data/galbot/lib 之类的路径），curl 会被这些自带的旧版 libcurl.so 顶替，
 # 导致 SSL 证书校验失败（报 "no version information" / 证书错误）。
